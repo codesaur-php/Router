@@ -37,7 +37,7 @@ class Router implements RouterInterface
         }
         
         if (empty($properties) || empty($properties[1])) {
-            throw new BadMethodCallException('Bad method call for ' . __CLASS__ . ":$method");
+            throw new InvalidArgumentException('Invalid arguments for ' . __CLASS__ . ":$method");
         }
         
         $pattern = $properties[0];
