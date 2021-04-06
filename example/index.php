@@ -1,5 +1,7 @@
 <?php
 
+namespace codesaur\Router\Example;
+
 /* DEV: v1.2021.03.02
  * 
  * This is an example script!
@@ -7,11 +9,13 @@
 
 require_once '../vendor/autoload.php';
 
+use Closure;
+
 use codesaur\Router\Router;
 
 $router = new Router();
 
-class HelloController
+class ExampleController
 {
     public function index()
     {
@@ -43,13 +47,13 @@ class HelloController
     }
 }
 
-$router->get('/', [HelloController::class]);
+$router->get('/', [ExampleController::class]);
 
-$router->any('/hello/{name}', [HelloController::class, 'greetings'])->name('hello');
+$router->any('/hello/{name}', [ExampleController::class, 'greetings'])->name('hello');
 
-$router->map(['POST', 'PUT'], '/hello', [HelloController::class, 'post_put']);
+$router->map(['POST', 'PUT'], '/hello', [ExampleController::class, 'post_put']);
 
-$router->post('/float/{float:number}', [HelloController::class, 'float'])->name('float');
+$router->post('/float/{float:number}', [ExampleController::class, 'float'])->name('float');
 
 $router->get('/sum/{int:a}/{uint:b}', function ($a, $b)
 {
