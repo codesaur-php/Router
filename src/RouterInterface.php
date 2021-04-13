@@ -4,7 +4,7 @@ namespace codesaur\Router;
 
 interface RouterInterface
 {
-    const PARAM_STRING = 'string:';    
+    const PARAM_STRING = 'string:';
     const FILTER_STRING = '(\w+)';
     
     const PARAM_INT = 'int:';

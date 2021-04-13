@@ -101,7 +101,7 @@ if (!isset($route)) {
     die("Unknown route pattern [$request_path]!");
 }
 
-$callback = $route->getCallback();            
+$callback = $route->getCallback();
 if ($callback instanceof Closure) {
     call_user_func_array($callback, $route->getParameters());
 } else {

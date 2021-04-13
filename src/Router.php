@@ -55,7 +55,7 @@ class Router implements RouterInterface
         $route = new Route($methods, $pattern, $callback);
 
         $filters = array();
-        preg_match_all(self::PARAMS_FILTER, $pattern, $params);        
+        preg_match_all(self::PARAMS_FILTER, $pattern, $params);
         foreach ($params[2] as $index => $param) {
             switch ($params[1][$index]) {
                 case self::PARAM_INT: $filters[$param] = self::FILTER_INT; break;
@@ -76,7 +76,7 @@ class Router implements RouterInterface
         foreach ($this->getRoutes() as $route) {
             if ($route->getName() === $name) {
                 return $route;
-            }            
+            }
         }
         
         return null;
@@ -130,7 +130,7 @@ class Router implements RouterInterface
     
     public function generate(string $routeName, array $params): ?string
     {
-        $route = $this->getRouteByName($routeName);            
+        $route = $this->getRouteByName($routeName);
         if (!$route instanceof Route) {
             if (defined('CODESAUR_DEVELOPMENT')
                     && CODESAUR_DEVELOPMENT
