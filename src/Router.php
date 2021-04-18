@@ -150,18 +150,18 @@ class Router implements RouterInterface
                     switch ($filter) {
                         case self::FILTER_FLOAT: 
                             if (!is_numeric($params[$key])) {
-                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value!");
+                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value");
                             }
                             break;
                         case self::FILTER_INT: 
                             if (!is_int($params[$key])) {
-                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value!");
+                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
                             }
                             break;
                         case self::FILTER_UNSIGNED_INT:
                             $is_uint = filter_var($params[$key], FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
                             if ($is_uint === false) {
-                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value!");
+                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");
                             }
                             break;
                     }

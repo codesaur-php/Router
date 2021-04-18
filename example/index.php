@@ -80,13 +80,13 @@ if (($pos = strpos($request_uri, '?')) !== false) {
 }
 $request_uri = rtrim($request_uri, '/');
 
-if (substr($request_uri, 0, $script_name_length) === $script_name)
+if (substr($request_uri, 0, $script_name_length) == $script_name)
 {
     $request_path = substr($request_uri, $script_name_length);
 } else {
     $script_path = dirname($_SERVER['SCRIPT_NAME']);
     $script_path_length = strlen($script_path);
-    if (substr($request_uri, 0, $script_path_length) === $script_path) {
+    if (substr($request_uri, 0, $script_path_length) == $script_path) {
         $request_path = substr($request_uri, $script_path_length);
     }
 }
@@ -98,7 +98,7 @@ if (!isset($request_path)) {
 $route = $router->match($request_path, $_SERVER['REQUEST_METHOD']);
 if (!isset($route)) {
     http_response_code(404);
-    die("Unknown route pattern [$request_path]!");
+    die("Unknown route pattern [$request_path]");
 }
 
 $callback = $route->getCallback();
@@ -107,13 +107,13 @@ if ($callback instanceof Closure) {
 } else {
     $controllerClass = $callback[0];
     if (!class_exists($controllerClass)) {
-        die("$controllerClass is not available!");
+        die("$controllerClass is not available");
     }
 
     $action = $callback[1] ?? 'index';
     $controller = new $controllerClass();
     if (!method_exists($controller, $action)) {
-        die("Action named $action is not part of $controllerClass!");
+        die("Action named $action is not part of $controllerClass");
     }
 
     call_user_func_array(array($controller, $action), $route->getParameters());
