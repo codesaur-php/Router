@@ -49,7 +49,7 @@ class ExampleController
 
 $router->get('/', [ExampleController::class]);
 
-$router->any('/hello/{name}', [ExampleController::class, 'greetings'])->name('hello');
+$router->any('/сайнуу/{name}', [ExampleController::class, 'greetings'])->name('hello');
 
 $router->map(['POST', 'PUT'], '/hello', [ExampleController::class, 'post_put']);
 
@@ -66,7 +66,7 @@ $router->get('/sum/{int:a}/{uint:b}', function ($a, $b)
 
 $router->get('/generate', function () use ($router)
 {
-    echo 'Hello John => ' .  $router->generate('hello', array('name' => 'John')) . '<br/>';
+    echo 'Hello Наранхүү => ' .  $router->generate('hello', array('name' => 'Наранхүү')) . '<br/>';
     echo 'Summary of 14 and -5 => ' .  $router->generate('sum', array('a' => -5, 'b' => 14)) . '<br/>';
     echo 'Float number 753.9 => ' .  $router->generate('float', array('number' => 753.9));
 });

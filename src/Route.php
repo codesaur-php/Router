@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php
 
 namespace codesaur\Router;
 
@@ -84,7 +84,13 @@ class Route
     
     public function getRegex(string $filters_regex): string
     {
-        return preg_replace_callback($filters_regex, array(&$this, 'getFilterRegex'), $this->getPattern()) ;
+        $parts = explode('/', $this->getPattern());
+        foreach ($parts as &$part) {
+            if ($part != '' && $part[0] != '{') {
+                $part = urlencode($part);
+            }
+        }
+        return preg_replace_callback($filters_regex, array(&$this, 'getFilterRegex'), implode('/', $parts)) ;
     }
     
     final function getFilterRegex($matches): string

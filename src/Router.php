@@ -1,14 +1,12 @@
-<?php declare(strict_types=1);
+<?php
 
 namespace codesaur\Router;
 
 use BadMethodCallException;
 use InvalidArgumentException;
 
-class Router implements RouterInterface
-{    
-    private $_pipe = '';
-    
+class Router
+{
     private $_routes = array();
     
     const HTTP_REQUEST_METHODS = array(
@@ -20,7 +18,13 @@ class Router implements RouterInterface
         'PATCH',
         'OPTIONS',
     );
-        
+    
+    const PARAM_FILTERS = '/\{(string:|int:|uint:|float:)?(\w+)}/';
+    const PARAM_FILTER_STRING = '([$A-Za-z0-9%\-_,!~\@+&)(]+)';
+    const PARAM_FILTER_INT ='(-?\d+)';
+    const PARAM_FILTER_UNSIGNED_INT = '(\d+)';
+    const PARAM_FILTER_FLOAT = '(-?\d+|-?\d*\.\d+)';
+    
     public function __call(string $method, array $properties) : Route
     {
         $uppercase_method = strtoupper($method);
@@ -55,13 +59,13 @@ class Router implements RouterInterface
         $route = new Route($methods, $pattern, $callback);
 
         $filters = array();
-        preg_match_all(self::PARAMS_FILTER, $pattern, $params);
+        preg_match_all(self::PARAM_FILTERS, $pattern, $params);
         foreach ($params[2] as $index => $param) {
             switch ($params[1][$index]) {
-                case self::PARAM_INT: $filters[$param] = self::FILTER_INT; break;
-                case self::PARAM_UNSIGNED_INT: $filters[$param] = self::FILTER_UNSIGNED_INT; break;
-                case self::PARAM_FLOAT: $filters[$param] = self::FILTER_FLOAT; break;
-                default: $filters[$param] = self::FILTER_STRING;
+                case 'int:': $filters[$param] = self::PARAM_FILTER_INT; break;
+                case 'uint:': $filters[$param] = self::PARAM_FILTER_UNSIGNED_INT; break;
+                case 'float:': $filters[$param] = self::PARAM_FILTER_FLOAT; break;
+                default: $filters[$param] = self::PARAM_FILTER_STRING;
             }
         }
         $route->setFilters($filters);
@@ -88,26 +92,24 @@ class Router implements RouterInterface
             if (!in_array($method, $route->getMethods())) {
                 continue;
             }
-            
-            $pattern_regex = '@^' . $this->getPipe();
-            $pattern_regex .= $route->getRegex(self::PARAMS_FILTER);
-            $pattern_regex .= '/?$@i';
-            if (!preg_match($pattern_regex, $pattern, $matches)) {
+
+            $regex = $route->getRegex(self::PARAM_FILTERS);
+            if (!preg_match("@^$regex/?$@i", $pattern, $matches)) {
                 continue;
             }
-        
+
             $params = [];
-            if (preg_match_all(self::PARAMS_FILTER, $route->getPattern(), $paramKeys)) {
+            if (preg_match_all(self::PARAM_FILTERS, $route->getPattern(), $paramKeys)) {
                 if (count($paramKeys[2]) !== (count($matches) - 1)) {
                     continue;
                 }
                 foreach ($paramKeys[2] as $key => $name) {
                     if (isset($matches[$key + 1])) {
                         $filter = $route->getFilters()[$name];
-                        if ($filter === self::FILTER_STRING
+                        if ($filter === self::PARAM_FILTER_STRING
                         ) {
-                            $params[$name] = $matches[$key + 1];
-                        } elseif ($filter === self::FILTER_FLOAT
+                            $params[$name] = urldecode($matches[$key + 1]);
+                        } elseif ($filter === self::PARAM_FILTER_FLOAT
                         ) {
                             $params[$name] = (float)$matches[$key + 1];
                         } else {
@@ -117,14 +119,10 @@ class Router implements RouterInterface
                 }
             }
             $route->setParameters($params);
-            
+
             return $route;
         }
-        
-        if ($pattern === $this->getPipe() . '/' . __FUNCTION__) {
-            die(get_class($this));
-        }
-        
+
         return null;
     }
     
@@ -143,22 +141,22 @@ class Router implements RouterInterface
 
         $paramKeys = array();
         $pattern = $route->getPattern();
-        if ($params && preg_match_all(self::PARAMS_FILTER, $pattern, $paramKeys)) {
+        if ($params && preg_match_all(self::PARAM_FILTERS, $pattern, $paramKeys)) {
             foreach ($paramKeys[2] as $index => $key) {
                 if (isset($params[$key])) {                        
                     $filter = $route->getFilters()[$key];
                     switch ($filter) {
-                        case self::FILTER_FLOAT: 
+                        case self::PARAM_FILTER_FLOAT: 
                             if (!is_numeric($params[$key])) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value");
                             }
                             break;
-                        case self::FILTER_INT: 
+                        case self::PARAM_FILTER_INT: 
                             if (!is_int($params[$key])) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
                             }
                             break;
-                        case self::FILTER_UNSIGNED_INT:
+                        case self::PARAM_FILTER_UNSIGNED_INT:
                             $is_uint = filter_var($params[$key], FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
                             if ($is_uint === false) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");
@@ -172,16 +170,6 @@ class Router implements RouterInterface
         }
         
         return $pattern;
-    }
-    
-    public function getPipe(): string
-    {
-        return $this->_pipe;
-    }
-    
-    public function setPipe(string $pipe)
-    {
-        $this->_pipe = rtrim($pipe, '/');
     }
     
     public function getRoutes(): array
