@@ -11,6 +11,7 @@ require_once '../vendor/autoload.php';
 
 use Closure;
 
+use codesaur\Router\Route;
 use codesaur\Router\Router;
 
 $router = new Router();
@@ -49,7 +50,7 @@ class ExampleController
 
 $router->get('/', [ExampleController::class]);
 
-$router->any('/сайнуу/{float:name}', [ExampleController::class, 'greetings'])->name('hello');
+$router->any('/сайнуу/{name}', [ExampleController::class, 'greetings'])->name('hello');
 
 $router->map(['POST', 'PUT'], '/hello', [ExampleController::class, 'post_put']);
 
@@ -96,7 +97,7 @@ if (!isset($request_path)) {
 }
 
 $route = $router->match($request_path, $_SERVER['REQUEST_METHOD']);
-if (!isset($route)) {
+if (!$route instanceof Route) {
     http_response_code(404);
     $pattern = rawurldecode($request_path);
     die("Unknown route pattern [$pattern]");
