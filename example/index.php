@@ -49,7 +49,7 @@ class ExampleController
 
 $router->get('/', [ExampleController::class]);
 
-$router->any('/сайнуу/{name}', [ExampleController::class, 'greetings'])->name('hello');
+$router->any('/сайнуу/{float:name}', [ExampleController::class, 'greetings'])->name('hello');
 
 $router->map(['POST', 'PUT'], '/hello', [ExampleController::class, 'post_put']);
 
@@ -98,7 +98,8 @@ if (!isset($request_path)) {
 $route = $router->match($request_path, $_SERVER['REQUEST_METHOD']);
 if (!isset($route)) {
     http_response_code(404);
-    die("Unknown route pattern [$request_path]");
+    $pattern = rawurldecode($request_path);
+    die("Unknown route pattern [$pattern]");
 }
 
 $callback = $route->getCallback();
