@@ -58,6 +58,7 @@ class Router
         
         $route = new Route($methods, $pattern, $callback);
 
+        $params = array();
         $filters = array();
         preg_match_all(self::PARAM_FILTERS, $pattern, $params);
         foreach ($params[2] as $index => $param) {
@@ -93,12 +94,14 @@ class Router
                 continue;
             }
 
+            $matches = array();
             $regex = $route->getRegex(self::PARAM_FILTERS);
             if (!preg_match("@^$regex/?$@i", $pattern, $matches)) {
                 continue;
             }
 
-            $params = [];
+            $params = array();
+            $paramKeys = array();
             if (preg_match_all(self::PARAM_FILTERS, $route->getPattern(), $paramKeys)) {
                 if (count($paramKeys[2]) !== (count($matches) - 1)) {
                     continue;
