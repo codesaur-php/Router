@@ -20,7 +20,7 @@ class Router
     );
     
     const PARAM_FILTERS = '/\{(string:|int:|uint:|float:)?(\w+)}/';
-    const PARAM_FILTER_STRING = '([$A-Za-z0-9%\-_,!~\@+&)(]+)';
+    const PARAM_FILTER_STRING = '([$.A-Za-z0-9%\-_,!~\@+&)(]+)';
     const PARAM_FILTER_INT ='(-?\d+)';
     const PARAM_FILTER_UNSIGNED_INT = '(\d+)';
     const PARAM_FILTER_FLOAT = '(-?\d+|-?\d*\.\d+)';
