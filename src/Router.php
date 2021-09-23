@@ -5,37 +5,40 @@ namespace codesaur\Router;
 use BadMethodCallException;
 use InvalidArgumentException;
 
-class Router
+use ReflectionClass;
+
+use Fig\Http\Message\RequestMethodInterface;
+
+class Router implements RouterInterface
 {
+    protected $methods;
+    
     private $_routes = array();
+
+    const INT_REGEX ='(-?\d+)';
+    const UNSIGNED_INT_REGEX = '(\d+)';
+    const FLOAT_REGEX = '(-?\d+|-?\d*\.\d+)';
+    const STRING_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
+    const FILTERS_REGEX = '/\{(string:|int:|uint:|float:)?(\w+)}/';
     
-    const HTTP_REQUEST_METHODS = array(
-        'GET',
-        'POST',
-        'PUT',
-        'HEAD',
-        'DELETE',
-        'PATCH',
-        'OPTIONS',
-    );
-    
-    const PARAM_FILTERS = '/\{(string:|int:|uint:|float:)?(\w+)}/';
-    
-    const PARAM_FILTER_INT ='(-?\d+)';
-    const PARAM_FILTER_UNSIGNED_INT = '(\d+)';
-    const PARAM_FILTER_FLOAT = '(-?\d+|-?\d*\.\d+)';
-    const PARAM_FILTER_STRING = '([\$\.\*\]\[\@A-Za-z0-9%-_,!~&)(=;]+)';
+    function __construct()
+    {
+        $refl = new ReflectionClass(RequestMethodInterface::class);
+        $this->methods = $refl->getConstants();
+    }
     
     public function __call(string $method, array $properties): Route
     {
         $uppercase_method = strtoupper($method);
         
-        if (is_array($properties[0])) {
+        if ($uppercase_method == 'MAP'
+                && is_array($properties[0])
+        ) {
             $methods = $properties[0];
             array_shift($properties);
-        } elseif ($uppercase_method === 'ANY') {
-            $methods = self::HTTP_REQUEST_METHODS;
-        } elseif (in_array($uppercase_method, self::HTTP_REQUEST_METHODS)) {
+        } elseif ($uppercase_method == 'ANY') {
+            $methods = array_values($this->methods);
+        } elseif (in_array($uppercase_method, $this->methods)) {
             $methods = array($uppercase_method);
         } else {
             throw new BadMethodCallException('Bad method call for ' . __CLASS__ . ":$method");
@@ -61,13 +64,13 @@ class Router
 
         $params = array();
         $filters = array();
-        preg_match_all(self::PARAM_FILTERS, $pattern, $params);
+        preg_match_all(self::FILTERS_REGEX, $pattern, $params);
         foreach ($params[2] as $index => $param) {
             switch ($params[1][$index]) {
-                case 'int:': $filters[$param] = self::PARAM_FILTER_INT; break;
-                case 'uint:': $filters[$param] = self::PARAM_FILTER_UNSIGNED_INT; break;
-                case 'float:': $filters[$param] = self::PARAM_FILTER_FLOAT; break;
-                default: $filters[$param] = self::PARAM_FILTER_STRING;
+                case 'int:': $filters[$param] = self::INT_REGEX; break;
+                case 'uint:': $filters[$param] = self::UNSIGNED_INT_REGEX; break;
+                case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
+                default: $filters[$param] = self::STRING_REGEX;
             }
         }
         $route->setFilters($filters);
@@ -96,24 +99,24 @@ class Router
             }
 
             $matches = array();
-            $regex = $route->getRegex(self::PARAM_FILTERS);
-            if (!preg_match("@^$regex/?$@i", $pattern, $matches)) {
+            $regex = $route->getRegex(self::FILTERS_REGEX);
+            if (!preg_match("@^$regex/?$@i", "$pattern", $matches)) {
                 continue;
             }
-
+            
             $params = array();
             $paramKeys = array();
-            if (preg_match_all(self::PARAM_FILTERS, $route->getPattern(), $paramKeys)) {
-                if (count($paramKeys[2]) !== (count($matches) - 1)) {
+            if (preg_match_all(self::FILTERS_REGEX, $route->getPattern(), $paramKeys)) {
+                if (count($paramKeys[2]) != (count($matches) - 1)) {
                     continue;
                 }
                 foreach ($paramKeys[2] as $key => $name) {
                     if (isset($matches[$key + 1])) {
                         $filter = $route->getFilters()[$name];
-                        if ($filter === self::PARAM_FILTER_STRING
+                        if ($filter === self::STRING_REGEX
                         ) {
                             $params[$name] = urldecode($matches[$key + 1]);
-                        } elseif ($filter === self::PARAM_FILTER_FLOAT
+                        } elseif ($filter === self::FLOAT_REGEX
                         ) {
                             $params[$name] = (float)$matches[$key + 1];
                         } else {
@@ -145,22 +148,22 @@ class Router
 
         $paramKeys = array();
         $pattern = $route->getPattern();
-        if ($params && preg_match_all(self::PARAM_FILTERS, $pattern, $paramKeys)) {
+        if ($params && preg_match_all(self::FILTERS_REGEX, $pattern, $paramKeys)) {
             foreach ($paramKeys[2] as $index => $key) {
                 if (isset($params[$key])) {                        
                     $filter = $route->getFilters()[$key];
                     switch ($filter) {
-                        case self::PARAM_FILTER_FLOAT: 
+                        case self::FLOAT_REGEX: 
                             if (!is_numeric($params[$key])) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value");
                             }
                             break;
-                        case self::PARAM_FILTER_INT: 
+                        case self::INT_REGEX: 
                             if (!is_int($params[$key])) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
                             }
                             break;
-                        case self::PARAM_FILTER_UNSIGNED_INT:
+                        case self::UNSIGNED_INT_REGEX:
                             $is_uint = filter_var($params[$key], FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
                             if ($is_uint === false) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");

@@ -23,9 +23,18 @@ class ExampleController
         echo 'This is an example script!';
     }
 
-    public function greetings($name)
+    public function greetings($firstname, $lastname = null)
     {
+        $name = $firstname;
+        if (!empty($lastname)) {
+            $name .= " $lastname";
+        }
         echo "Hello $name!";
+    }
+    
+    public function test($firstname, $lastname, $a, $b, $number, $ah)
+    {
+        var_dump($firstname, $lastname, $a, $b, $number, $ah);
     }
     
     public function post_put()
@@ -50,7 +59,11 @@ class ExampleController
 
 $router->get('/', [ExampleController::class]);
 
-$router->any('/сайнуу/{name}', [ExampleController::class, 'greetings'])->name('hello');
+$router->get('/сайнуу/{name}', [ExampleController::class, 'greetings']);
+
+$router->any('/hello/{string:firstname}/{lastname}', [ExampleController::class, 'greetings'])->name('hello');
+
+$router->any('/test-all-filters/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{string:word}', [ExampleController::class, 'test'])->name('test-filters');
 
 $router->map(['POST', 'PUT'], '/hello', [ExampleController::class, 'post_put']);
 
@@ -67,9 +80,10 @@ $router->get('/sum/{int:a}/{uint:b}', function ($a, $b)
 
 $router->get('/generate', function () use ($router)
 {
-    echo 'Hello Наранхүү => ' .  $router->generate('hello', array('name' => 'Наранхүү')) . '<br/>';
+    echo 'Hello Наранхүү => ' .  $router->generate('hello', array('firstname' => 'Наранхүү', 'lastname' => 'aka codesaur')) . '<br/>';
     echo 'Summary of 14 and -5 => ' .  $router->generate('sum', array('a' => -5, 'b' => 14)) . '<br/>';
-    echo 'Float number 753.9 => ' .  $router->generate('float', array('number' => 753.9));
+    echo 'Float number 753.9 => ' .  $router->generate('float', array('number' => 753.9)) . '<br/>';
+    echo 'Test filters => ' .  $router->generate('test-filters', array('firstname' => 'Наранхүү', 'lastname' => 'aka codesaur', 'a' => -10, 'b' => 976, 'number' => 173.5, 'word' => 'This is an example script!'));
 });
 
 $script_name = $_SERVER['SCRIPT_NAME'];
