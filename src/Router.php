@@ -91,7 +91,7 @@ class Router implements RouterInterface
         return null;
     }
     
-    public function match(string $pattern, string $method): ?Route
+    public function match(string $pattern, string $method)
     {
         foreach ($this->_routes as $route) {
             if (!$route->hasMethod($method)) {
