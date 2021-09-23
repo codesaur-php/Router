@@ -52,6 +52,11 @@ class Route
         $this->_methods = $methods;
     }
     
+    public function hasMethod(string $method): bool
+    {
+        return in_array($method, $this->getMethods());
+    }
+    
     public function getFilters(): ?array
     {
         return $this->_filters;

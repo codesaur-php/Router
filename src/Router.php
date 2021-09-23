@@ -94,7 +94,7 @@ class Router implements RouterInterface
     public function match(string $pattern, string $method): ?Route
     {
         foreach ($this->_routes as $route) {
-            if (!in_array($method, $route->getMethods())) {
+            if (!$route->hasMethod($method)) {
                 continue;
             }
 
