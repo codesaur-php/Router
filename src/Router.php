@@ -5,13 +5,20 @@ namespace codesaur\Router;
 use BadMethodCallException;
 use InvalidArgumentException;
 
-use ReflectionClass;
-
-use Fig\Http\Message\RequestMethodInterface;
-
 class Router implements RouterInterface
 {
-    protected $methods;
+    private $_http_methods = array(
+        'HEAD',
+        'GET',
+        'POST',
+        'PUT',
+        'PATCH',
+        'DELETE',
+        'PURGE',
+        'OPTIONS',
+        'TRACE',
+        'CONNECT'
+    );
     
     private $_routes = array();
 
@@ -20,12 +27,6 @@ class Router implements RouterInterface
     const FLOAT_REGEX = '(-?\d+|-?\d*\.\d+)';
     const STRING_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
     const FILTERS_REGEX = '/\{(string:|int:|uint:|float:)?(\w+)}/';
-    
-    function __construct()
-    {
-        $refl = new ReflectionClass(RequestMethodInterface::class);
-        $this->methods = $refl->getConstants();
-    }
     
     public function __call(string $method, array $properties): Route
     {
@@ -37,8 +38,8 @@ class Router implements RouterInterface
             $methods = $properties[0];
             array_shift($properties);
         } elseif ($uppercase_method == 'ANY') {
-            $methods = array_values($this->methods);
-        } elseif (in_array($uppercase_method, $this->methods)) {
+            $methods = $this->_http_methods;
+        } elseif (in_array($uppercase_method, $this->_http_methods)) {
             $methods = array($uppercase_method);
         } else {
             throw new BadMethodCallException('Bad method call for ' . __CLASS__ . ":$method");
@@ -133,7 +134,7 @@ class Router implements RouterInterface
         return null;
     }
     
-    public function generate(string $routeName, array $params): ?string
+    public function generate(string $routeName, array $params)
     {
         $route = $this->getRouteByName($routeName);
         if (!$route instanceof Route) {
