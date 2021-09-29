@@ -20,7 +20,7 @@ class ExampleController
 {
     public function index()
     {
-        echo 'This is an example script!';
+        echo '<br/>This is an example script!';
     }
 
     public function greetings($firstname, $lastname = null)
@@ -29,7 +29,7 @@ class ExampleController
         if (!empty($lastname)) {
             $name .= " $lastname";
         }
-        echo "Hello $name!";
+        echo "<br/>Hello $name!";
     }
     
     public function test($firstname, $lastname, $a, $b, $number, $ah)
@@ -75,7 +75,7 @@ $router->get('/sum/{int:a}/{uint:b}', function ($a, $b)
 
     var_dump($a, $b, $sum);
     
-    echo "$a + $b = $sum";
+    echo "<br/>$a + $b = $sum";
 })->name('sum');
 
 $router->get('/generate', function () use ($router)

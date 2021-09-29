@@ -134,6 +134,13 @@ class Router implements RouterInterface
         return null;
     }
     
+    public function merge(RouterInterface $router): bool
+    {
+        $this->_routes = array_merge($this->_routes, $router->getRoutes());
+        
+        return true;
+    }
+    
     public function generate(string $routeName, array $params)
     {
         $route = $this->getRouteByName($routeName);
@@ -183,10 +190,5 @@ class Router implements RouterInterface
     public function getRoutes(): array
     {
         return $this->_routes;
-    }
-    
-    public function merge(Router $router)
-    {
-        $this->_routes = array_merge($this->_routes, $router->getRoutes());
     }
 }
