@@ -4,6 +4,7 @@ namespace codesaur\Router;
 
 use BadMethodCallException;
 use InvalidArgumentException;
+use OutOfRangeException;
 
 class Router implements RouterInterface
 {
@@ -151,8 +152,8 @@ class Router implements RouterInterface
             ) {
                 error_log("NO ROUTE: $routeName");
             }
-
-            return null;
+            
+            throw new OutOfRangeException(__CLASS__ . ": Route named [$routeName] not found");
         }
 
         $paramKeys = array();
