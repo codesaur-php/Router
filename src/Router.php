@@ -7,7 +7,9 @@ use InvalidArgumentException;
 
 class Router implements RouterInterface
 {
-    private $_http_methods = array(
+    private $_routes = array();
+
+    const HTTP_METHODS = array(
         'HEAD',
         'GET',
         'POST',
@@ -17,11 +19,10 @@ class Router implements RouterInterface
         'PURGE',
         'OPTIONS',
         'TRACE',
-        'CONNECT'
+        'CONNECT',
+        'LOCAL'
     );
     
-    private $_routes = array();
-
     const INT_REGEX ='(-?\d+)';
     const UNSIGNED_INT_REGEX = '(\d+)';
     const FLOAT_REGEX = '(-?\d+|-?\d*\.\d+)';
@@ -38,8 +39,8 @@ class Router implements RouterInterface
             $methods = $properties[0];
             array_shift($properties);
         } elseif ($uppercase_method == 'ANY') {
-            $methods = $this->_http_methods;
-        } elseif (in_array($uppercase_method, $this->_http_methods)) {
+            $methods = self::HTTP_METHODS;
+        } elseif (in_array($uppercase_method, self::HTTP_METHODS)) {
             $methods = array($uppercase_method);
         } else {
             throw new BadMethodCallException('Bad method call for ' . __CLASS__ . ":$method");
