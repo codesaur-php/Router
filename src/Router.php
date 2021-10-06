@@ -7,9 +7,8 @@ use InvalidArgumentException;
 
 class Router implements RouterInterface
 {
-    private $_routes = array();
-    private $_names = array();
-    private $_last;
+    protected $routes = array();
+    protected $name_patterns = array();
     
     const FILTERS_REGEX = '/\{(int:|uint:|float:|utf8:)?(\w+)}/';
 
@@ -22,23 +21,23 @@ class Router implements RouterInterface
             throw new InvalidArgumentException('Invalid route configuration for ' . __CLASS__ . ":$method");
         }
         
-        $this->_last = $properties[0];
-        $this->_routes[$this->_last][$method] = new Callback($properties[1]);
+        $this->pattern = $properties[0];
+        $this->routes[$this->pattern][$method] = new Callback($properties[1]);
 
         return $this;
     }
     
     public function name(string $ruleName)
     {
-        if (isset($this->_last)) {
-            $this->_names[$ruleName] = $this->_last;
-            unset($this->_last);
+        if (isset($this->pattern)) {
+            $this->name_patterns[$ruleName] = $this->pattern;
+            unset($this->pattern);
         }
     }
     
     public function match(string $path, string $method)
     {
-        foreach ($this->_routes as $pattern => $route) {
+        foreach ($this->routes as $pattern => $route) {
             foreach ($route as $methods => $callback) {
                 if (!in_array($method, explode('_', $methods))) {
                     continue;
@@ -92,12 +91,16 @@ class Router implements RouterInterface
     
     public function merge(RouterInterface $router)
     {
-        $this->_routes = array_merge($this->_routes, $router->getRoutes());
+        $this->routes = array_merge($this->routes, $router->getRoutes());
+        
+        if (!empty($router->name_patterns)) {
+            $this->name_patterns += $router->name_patterns;
+        }
     }
     
-    public function generate(string $ruleName, array $params)
+    public function generate(string $ruleName, array $params = [])
     {
-        if (!isset($this->_names[$ruleName])) {
+        if (!isset($this->name_patterns[$ruleName])) {
             if (defined('CODESAUR_DEVELOPMENT')
                     && CODESAUR_DEVELOPMENT
             ) {
@@ -107,7 +110,7 @@ class Router implements RouterInterface
             throw new OutOfRangeException(__CLASS__ . ": Route with rule named [$ruleName] not found");
         }
 
-        $pattern = $this->_names[$ruleName];
+        $pattern = $this->name_patterns[$ruleName];
         if (empty($params)) {
             return $pattern;
         }
@@ -145,7 +148,7 @@ class Router implements RouterInterface
     
     public function getRoutes(): array
     {
-        return $this->_routes;
+        return $this->routes;
     }
     
     final function getPatternRegex($pattern, array $filters): string
