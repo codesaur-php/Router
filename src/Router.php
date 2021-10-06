@@ -2,186 +2,140 @@
 
 namespace codesaur\Router;
 
-use BadMethodCallException;
-use InvalidArgumentException;
 use OutOfRangeException;
+use InvalidArgumentException;
 
 class Router implements RouterInterface
 {
     private $_routes = array();
+    private $_names = array();
+    private $_last;
+    
+    const FILTERS_REGEX = '/\{(int:|uint:|float:|utf8:)?(\w+)}/';
 
-    const HTTP_METHODS = array(
-        'HEAD',
-        'GET',
-        'POST',
-        'PUT',
-        'PATCH',
-        'DELETE',
-        'PURGE',
-        'OPTIONS',
-        'TRACE',
-        'CONNECT',
-        'LOCAL'
-    );
-    
-    const INT_REGEX ='(-?\d+)';
-    const UNSIGNED_INT_REGEX = '(\d+)';
-    const FLOAT_REGEX = '(-?\d+|-?\d*\.\d+)';
-    const STRING_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
-    const FILTERS_REGEX = '/\{(string:|int:|uint:|float:)?(\w+)}/';
-    
-    public function __call(string $method, array $properties): Route
+    public function &__call(string $method, array $properties)
     {
-        $uppercase_method = strtoupper($method);
-        
-        if ($uppercase_method == 'MAP'
-                && is_array($properties[0])
+        if (empty($properties[0])
+                || empty($properties[1])
+                || !is_callable($properties[1])
         ) {
-            $methods = $properties[0];
-            array_shift($properties);
-        } elseif ($uppercase_method == 'ANY') {
-            $methods = self::HTTP_METHODS;
-        } elseif (in_array($uppercase_method, self::HTTP_METHODS)) {
-            $methods = array($uppercase_method);
-        } else {
-            throw new BadMethodCallException('Bad method call for ' . __CLASS__ . ":$method");
+            throw new InvalidArgumentException('Invalid route configuration for ' . __CLASS__ . ":$method");
         }
         
-        if (empty($properties) || empty($properties[1])) {
-            throw new InvalidArgumentException('Invalid arguments for ' . __CLASS__ . ":$method");
-        }
-        
-        $pattern = $properties[0];
-        
-        if (is_array($properties[1])
-                || is_callable($properties[1])
-        ) {
-            $callback = $properties[1];
-        } elseif (is_string($properties[1])) {
-            $callback = array($properties[1], 'index');
-        } else {
-            throw new InvalidArgumentException(__CLASS__ . ": Invalid callback on route pattern [$pattern]");
-        }
-        
-        $route = new Route($methods, $pattern, $callback);
+        $this->_last = $properties[0];
+        $this->_routes[$this->_last][$method] = new Callback($properties[1]);
 
-        $params = array();
-        $filters = array();
-        preg_match_all(self::FILTERS_REGEX, $pattern, $params);
-        foreach ($params[2] as $index => $param) {
-            switch ($params[1][$index]) {
-                case 'int:': $filters[$param] = self::INT_REGEX; break;
-                case 'uint:': $filters[$param] = self::UNSIGNED_INT_REGEX; break;
-                case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
-                default: $filters[$param] = self::STRING_REGEX;
-            }
-        }
-        $route->setFilters($filters);
-        
-        $this->_routes[] = $route;
-        
-        return end($this->_routes);
+        return $this;
     }
     
-    public function getRouteByName(string $name): ?Route
+    public function name(string $ruleName)
     {
-        foreach ($this->getRoutes() as $route) {
-            if ($route->getName() === $name) {
-                return $route;
-            }
+        if (isset($this->_last)) {
+            $this->_names[$ruleName] = $this->_last;
+            unset($this->_last);
         }
-        
-        return null;
     }
     
-    public function match(string $pattern, string $method)
+    public function match(string $path, string $method)
     {
-        foreach ($this->_routes as $route) {
-            if (!$route->hasMethod($method)) {
-                continue;
-            }
-
-            $matches = array();
-            $regex = $route->getRegex(self::FILTERS_REGEX);
-            if (!preg_match("@^$regex/?$@i", "$pattern", $matches)) {
-                continue;
-            }
-            
-            $params = array();
-            $paramKeys = array();
-            if (preg_match_all(self::FILTERS_REGEX, $route->getPattern(), $paramKeys)) {
-                if (count($paramKeys[2]) != (count($matches) - 1)) {
+        foreach ($this->_routes as $pattern => $route) {
+            foreach ($route as $methods => $callback) {
+                if (!in_array($method, explode('_', $methods))) {
                     continue;
                 }
-                foreach ($paramKeys[2] as $key => $name) {
+
+                $filters = array();
+                $paramMatches = array();
+                if (preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
+                    foreach ($paramMatches[2] as $index => $param) {
+                        switch ($paramMatches[1][$index]) {
+                            case 'int:': $filters[$param] = self::INT_REGEX; break;
+                            case 'uint:': $filters[$param] = self::UNSIGNED_INT_REGEX; break;
+                            case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
+                            case 'utf8:': $filters[$param] = self::UTF8_REGEX; break;
+                            default: $filters[$param] = self::DEFAULT_REGEX;
+                        }
+                    }
+                }
+                
+                $matches = array();
+                $regex = $this->getPatternRegex($pattern, $filters);
+                if (!preg_match("@^$regex/?$@i", $path, $matches)
+                        || count($paramMatches[2]) != (count($matches) - 1)
+                ) {
+                    continue;
+                }
+                
+                $params = array();
+                foreach ($paramMatches[2] as $key => $name) {
                     if (isset($matches[$key + 1])) {
-                        $filter = $route->getFilters()[$name];
-                        if ($filter === self::STRING_REGEX
-                        ) {
+                        $filter = $filters[$name];
+                        if ($filter == self::DEFAULT_REGEX) {
+                            $params[$name] = $matches[$key + 1];
+                        } elseif ($filter == self::UTF8_REGEX) {
                             $params[$name] = urldecode($matches[$key + 1]);
-                        } elseif ($filter === self::FLOAT_REGEX
-                        ) {
+                        } elseif ($filter == self::FLOAT_REGEX) {
                             $params[$name] = (float)$matches[$key + 1];
                         } else {
                             $params[$name] = (int)$matches[$key + 1];
                         }
                     }
-                }
+                }                
+                $callback->setParameters($params);
+                
+                return $callback;
             }
-            $route->setParameters($params);
-
-            return $route;
         }
 
         return null;
     }
     
-    public function merge(RouterInterface $router): bool
+    public function merge(RouterInterface $router)
     {
         $this->_routes = array_merge($this->_routes, $router->getRoutes());
-        
-        return true;
     }
     
-    public function generate(string $routeName, array $params)
+    public function generate(string $ruleName, array $params)
     {
-        $route = $this->getRouteByName($routeName);
-        if (!$route instanceof Route) {
+        if (!isset($this->_names[$ruleName])) {
             if (defined('CODESAUR_DEVELOPMENT')
                     && CODESAUR_DEVELOPMENT
             ) {
-                error_log("NO ROUTE: $routeName");
+                error_log("NO RULE: $ruleName");
             }
             
-            throw new OutOfRangeException(__CLASS__ . ": Route named [$routeName] not found");
+            throw new OutOfRangeException(__CLASS__ . ": Route with rule named [$ruleName] not found");
         }
 
-        $paramKeys = array();
-        $pattern = $route->getPattern();
-        if ($params && preg_match_all(self::FILTERS_REGEX, $pattern, $paramKeys)) {
-            foreach ($paramKeys[2] as $index => $key) {
-                if (isset($params[$key])) {                        
-                    $filter = $route->getFilters()[$key];
+        $pattern = $this->_names[$ruleName];
+        if (empty($params)) {
+            return $pattern;
+        }
+        
+        $paramMatches = array();
+        if (preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
+            foreach ($paramMatches[2] as $index => $key) {
+                if (isset($params[$key])) {
+                    $filter = $paramMatches[1][$index];
                     switch ($filter) {
-                        case self::FLOAT_REGEX: 
+                        case 'float:':
                             if (!is_numeric($params[$key])) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value");
                             }
                             break;
-                        case self::INT_REGEX: 
+                        case 'int:':
                             if (!is_int($params[$key])) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
                             }
                             break;
-                        case self::UNSIGNED_INT_REGEX:
+                        case 'uint':
                             $is_uint = filter_var($params[$key], FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
                             if ($is_uint === false) {
                                 throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");
                             }
                             break;
                     }
-
-                    $pattern = preg_replace('/\{' . $paramKeys[1][$index] . '(\w+)\}/', $params[$key], $pattern, 1);
+                    $pattern = preg_replace('/\{' . $filter . '(\w+)\}/', $params[$key], $pattern, 1);
                 }
             }
         }
@@ -192,5 +146,18 @@ class Router implements RouterInterface
     public function getRoutes(): array
     {
         return $this->_routes;
+    }
+    
+    final function getPatternRegex($pattern, array $filters): string
+    {
+        $parts = explode('/', $pattern);
+        foreach ($parts as &$part) {
+            if ($part != '' && $part[0] != '{') {
+                $part = urlencode($part);
+            }
+        }
+        return preg_replace_callback(self::FILTERS_REGEX, function ($matches) use ($filters) {
+            return isset($matches[2]) && isset($filters[$matches[2]]) ? $filters[$matches[2]] : '(\w+)';
+        }, implode('/', $parts));
     }
 }
