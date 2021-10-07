@@ -14,15 +14,18 @@ class Router implements RouterInterface
 
     public function &__call(string $method, array $properties)
     {
-        if (empty($properties[0])
-                || empty($properties[1])
-                || !is_callable($properties[1])
-        ) {
+        if (empty($properties[0]) || empty($properties[1])) {
             throw new InvalidArgumentException('Invalid route configuration for ' . __CLASS__ . ":$method");
         }
         
         $this->pattern = $properties[0];
-        $this->routes[$this->pattern][$method] = new Callback($properties[1]);
+        if (is_array($properties[1]) || is_callable($properties[1])) {
+            $callback = new Callback($properties[1]);
+        } else {
+            throw new InvalidArgumentException(__CLASS__ . ": Invalid callback on route pattern [$this->pattern]");
+        }
+        
+        $this->routes[$this->pattern][$method] = $callback;
 
         return $this;
     }
@@ -42,21 +45,26 @@ class Router implements RouterInterface
                 if (!in_array($method, explode('_', $methods))) {
                     continue;
                 }
+                
+                if ($path == $pattern) {
+                    return $callback;
+                }
 
                 $filters = array();
                 $paramMatches = array();
-                if (preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
-                    foreach ($paramMatches[2] as $index => $param) {
-                        switch ($paramMatches[1][$index]) {
-                            case 'int:': $filters[$param] = self::INT_REGEX; break;
-                            case 'uint:': $filters[$param] = self::UNSIGNED_INT_REGEX; break;
-                            case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
-                            case 'utf8:': $filters[$param] = self::UTF8_REGEX; break;
-                            default: $filters[$param] = self::DEFAULT_REGEX;
-                        }
+                if (!preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
+                    continue;
+                }
+                foreach ($paramMatches[2] as $index => $param) {
+                    switch ($paramMatches[1][$index]) {
+                        case 'int:': $filters[$param] = self::INT_REGEX; break;
+                        case 'uint:': $filters[$param] = self::UNSIGNED_INT_REGEX; break;
+                        case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
+                        case 'utf8:': $filters[$param] = self::UTF8_REGEX; break;
+                        default: $filters[$param] = self::DEFAULT_REGEX;
                     }
                 }
-                
+
                 $matches = array();
                 $regex = $this->getPatternRegex($pattern, $filters);
                 if (!preg_match("@^$regex/?$@i", $path, $matches)
