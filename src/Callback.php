@@ -17,7 +17,7 @@ class Callback
         return $this->_callable;
     }
 
-    public function getParameters(): array
+    public function getParameters()
     {
         return $this->_params;
     }
