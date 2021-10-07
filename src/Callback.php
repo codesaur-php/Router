@@ -5,7 +5,7 @@ namespace codesaur\Router;
 class Callback
 {
     private $_callable;
-    private $_params;
+    private $_params = array();
     
     function __construct($callable)
     {
@@ -17,7 +17,7 @@ class Callback
         return $this->_callable;
     }
 
-    public function getParameters()
+    public function getParameters(): array
     {
         return $this->_params;
     }
