@@ -12,6 +12,12 @@ class Router implements RouterInterface
     
     const FILTERS_REGEX = '/\{(int:|uint:|float:|utf8:)?(\w+)}/';
 
+    const INT_REGEX = '(-?\d+)';
+    const UNSIGNED_INT_REGEX ='(\d+)';
+    const FLOAT_REGEX = '(-?\d+|-?\d*\.\d+)';
+    const UTF8_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
+    const DEFAULT_REGEX = '(\w+)';
+    
     public function &__call(string $method, array $properties)
     {
         if (empty($properties[0]) || empty($properties[1])) {
