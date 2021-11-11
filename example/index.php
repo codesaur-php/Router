@@ -99,9 +99,8 @@ if (($pos = strpos($request_uri, '?')) !== false) {
     $request_uri = substr($request_uri, 0, $pos);
 }
 $uri_path = rtrim($request_uri, '/');
-$script_path = dirname($_SERVER['SCRIPT_NAME']);
-$strip_path = strlen($script_path) > 1 ? $script_path : '';
-$target_path = $strip_path != '' ? str_replace($strip_path, '', $uri_path) : $uri_path;
+$sp_lngth = strlen(dirname($_SERVER['SCRIPT_NAME']));
+$target_path = $sp_lngth > 1 ? substr($uri_path, $sp_lngth) : $uri_path;
 if (empty($target_path)) {
     $target_path = '/';
 }
