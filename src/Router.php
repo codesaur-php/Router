@@ -74,7 +74,7 @@ class Router implements RouterInterface
                 $matches = array();
                 $regex = $this->getPatternRegex($pattern, $filters);
                 if (!preg_match("@^$regex/?$@i", $path, $matches)
-                        || count($paramMatches[2]) != (count($matches) - 1)
+                    || count($paramMatches[2]) != (count($matches) - 1)
                 ) {
                     continue;
                 }
@@ -116,7 +116,7 @@ class Router implements RouterInterface
     {
         if (!isset($this->name_patterns[$ruleName])) {
             if (defined('CODESAUR_DEVELOPMENT')
-                    && CODESAUR_DEVELOPMENT
+                && CODESAUR_DEVELOPMENT
             ) {
                 error_log("NO RULE: $ruleName");
             }
