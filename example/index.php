@@ -7,6 +7,9 @@ namespace codesaur\Router\Example;
  * This is an example script!
  */
 
+ini_set('display_errors', 'On');
+error_reporting(\E_ALL & ~\E_STRICT & ~\E_NOTICE);
+
 require_once '../vendor/autoload.php';
 
 use codesaur\Router\Callback;
@@ -33,8 +36,15 @@ class ExampleController
         echo "<br/>Single word => $singleword";
     }
     
-    public function test(string $singleword, string $firstname, string $lastname, int $a, int $b, float $number, string $word)
-    {
+    public function test(
+        string $singleword,
+        string $firstname,
+        string $lastname,
+        int $a,
+        int $b,
+        float $number,
+        string $word
+    ) {
         var_dump($singleword, $firstname, $lastname, $a, $b, $number, $word);
     }
     
@@ -89,7 +99,15 @@ $router->GET('/generate', function () use ($router)
     echo 'Hello Наранхүү => ' . $router->generate('hello', ['firstname' => 'Наранхүү', 'lastname' => 'aka codesaur']) . '<br/>';
     echo 'Summary of 14 and -5 => ' . $router->generate('sum', ['a' => -5, 'b' => 14]) . '<br/>';
     echo 'Float number 753.9 => ' . $router->generate('float', ['number' => 753.9]) . '<br/>';
-    echo 'Test filters => ' . $router->generate('test-filters', ['singleword' => 'example', 'firstname' => 'Наранхүү', 'lastname' => 'aka codesaur', 'a' => -10, 'b' => 976, 'number' => 173.5, 'word' => 'Энэ бол жишээ!']);
+    echo 'Test filters => ' . $router->generate('test-filters', [
+        'singleword' => 'example',
+        'firstname' => 'Наранхүү',
+        'lastname' => 'aka codesaur',
+        'a' => -10,
+        'b' => 976,
+        'number' => 173.5,
+        'word' => 'Энэ бол жишээ!'
+    ]);
 });
 
 $request_uri = preg_replace('/\/+/', '\\1/', $_SERVER['REQUEST_URI']);
@@ -124,7 +142,6 @@ if ($callable instanceof \Closure) {
     if (!method_exists($controller, $action)) {
         die("Action named $action is not part of $controllerClass");
     }
-
-    var_dump([$controller, $action], $parameters);
+    
     call_user_func_array([$controller, $action], $parameters);
 }

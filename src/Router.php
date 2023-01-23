@@ -7,6 +7,8 @@ class Router implements RouterInterface
     protected array $routes = [];
     protected array $name_patterns = [];
     
+    private string $_pattern;
+    
     const FILTERS_REGEX = '/\{(int:|uint:|float:|utf8:)?(\w+)}/';
 
     const INT_REGEX = '(-?\d+)';
@@ -21,23 +23,23 @@ class Router implements RouterInterface
             throw new \InvalidArgumentException('Invalid route configuration for ' . __CLASS__ . ":$method");
         }
         
-        $this->pattern = $properties[0];
+        $this->_pattern = $properties[0];
         if (is_array($properties[1]) || is_callable($properties[1])) {
             $callback = new Callback($properties[1]);
         } else {
-            throw new \InvalidArgumentException(__CLASS__ . ": Invalid callback on route pattern [$this->pattern]");
+            throw new \InvalidArgumentException(__CLASS__ . ": Invalid callback on route pattern [$this->_pattern]");
         }
         
-        $this->routes[$this->pattern][$method] = $callback;
+        $this->routes[$this->_pattern][$method] = $callback;
 
         return $this;
     }
     
     public function name(string $ruleName)
     {
-        if (isset($this->pattern)) {
-            $this->name_patterns[$ruleName] = $this->pattern;
-            unset($this->pattern);
+        if (isset($this->_pattern)) {
+            $this->name_patterns[$ruleName] = $this->_pattern;
+            unset($this->_pattern);
         }
     }
     
@@ -142,7 +144,7 @@ class Router implements RouterInterface
                                 throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
                             }
                             break;
-                        case 'uint':
+                        case 'uint:':
                             $is_uint = filter_var($params[$key], \FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
                             if ($is_uint === false) {
                                 throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");
