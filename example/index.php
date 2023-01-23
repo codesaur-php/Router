@@ -9,12 +9,8 @@ namespace codesaur\Router\Example;
 
 require_once '../vendor/autoload.php';
 
-use Closure;
-
 use codesaur\Router\Callback;
 use codesaur\Router\Router;
-
-$router = new Router();
 
 class ExampleController
 {
@@ -23,7 +19,7 @@ class ExampleController
         echo '<br/>This is an example script!';
     }
 
-    public function greetings($firstname, $lastname = null)
+    public function greetings(string $firstname, ?string $lastname = null)
     {
         $name = $firstname;
         if (!empty($lastname)) {
@@ -32,17 +28,17 @@ class ExampleController
         echo "<br/>Hello $name!";
     }
     
-    public function echo($singleword)
+    public function echo(string $singleword)
     {
         echo "<br/>Single word => $singleword";
     }
     
-    public function test($string, $firstname, $lastname, $a, $b, $number, $ah)
+    public function test(string $singleword, string $firstname, string $lastname, int $a, int $b, float $number, string $word)
     {
-        var_dump($string, $firstname, $lastname, $a, $b, $number, $ah);
+        var_dump($singleword, $firstname, $lastname, $a, $b, $number, $word);
     }
     
-    public function post_or_put()
+    public function post()
     {
         if (empty($_POST['firstname'])) {
             die('Invalid request!');
@@ -62,9 +58,11 @@ class ExampleController
     }
 }
 
+$router = new Router();
+
 $router->GET('/', [ExampleController::class, 'index']);
 
-$router->POST('/сайнуу/{utf8:name}', [ExampleController::class, 'greetings']);
+$router->POST('/сайнуу/{utf8:firstname}', [ExampleController::class, 'greetings']);
 
 $router->GET('/echo/{singleword}', [ExampleController::class, 'echo'])->name('echo');
 
@@ -72,11 +70,11 @@ $router->GET('/hello/{utf8:firstname}/{utf8:lastname}', [ExampleController::clas
 
 $router->GET('/test-all-filters/{singleword}/{utf8:firstname}/{utf8:lastname}/{int:a}/{uint:b}/{float:number}/{utf8:word}', [ExampleController::class, 'test'])->name('test-filters');
 
-$router->POST_PUT('/hello', [ExampleController::class, 'post_or_put']);
+$router->POST('/hello', [ExampleController::class, 'post']);
 
 $router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])->name('float');
 
-$router->GET('/sum/{int:a}/{uint:b}', function ($a, $b)
+$router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b)
 {
     $sum = $a + $b;
 
@@ -87,11 +85,11 @@ $router->GET('/sum/{int:a}/{uint:b}', function ($a, $b)
 
 $router->GET('/generate', function () use ($router)
 {
-    echo 'Single word => ' . $router->generate('echo', array('singleword' => 'Congrats')) . '<br/>';
-    echo 'Hello Наранхүү => ' . $router->generate('hello', array('firstname' => 'Наранхүү', 'lastname' => 'aka codesaur')) . '<br/>';
-    echo 'Summary of 14 and -5 => ' . $router->generate('sum', array('a' => -5, 'b' => 14)) . '<br/>';
-    echo 'Float number 753.9 => ' . $router->generate('float', array('number' => 753.9)) . '<br/>';
-    echo 'Test filters => ' . $router->generate('test-filters', array('singleword' => 'example', 'firstname' => 'Наранхүү', 'lastname' => 'aka codesaur', 'a' => -10, 'b' => 976, 'number' => 173.5, 'word' => 'Энэ бол жишээ!'));
+    echo 'Single word => ' . $router->generate('echo', ['singleword' => 'Congrats']) . '<br/>';
+    echo 'Hello Наранхүү => ' . $router->generate('hello', ['firstname' => 'Наранхүү', 'lastname' => 'aka codesaur']) . '<br/>';
+    echo 'Summary of 14 and -5 => ' . $router->generate('sum', ['a' => -5, 'b' => 14]) . '<br/>';
+    echo 'Float number 753.9 => ' . $router->generate('float', ['number' => 753.9]) . '<br/>';
+    echo 'Test filters => ' . $router->generate('test-filters', ['singleword' => 'example', 'firstname' => 'Наранхүү', 'lastname' => 'aka codesaur', 'a' => -10, 'b' => 976, 'number' => 173.5, 'word' => 'Энэ бол жишээ!']);
 });
 
 $request_uri = preg_replace('/\/+/', '\\1/', $_SERVER['REQUEST_URI']);
@@ -113,7 +111,7 @@ if (!$callback instanceof Callback) {
 
 $callable = $callback->getCallable();
 $parameters = $callback->getParameters();
-if ($callable instanceof Closure) {
+if ($callable instanceof \Closure) {
     call_user_func_array($callable, $parameters);
 } else {
     $controllerClass = $callable[0];
@@ -127,5 +125,6 @@ if ($callable instanceof Closure) {
         die("Action named $action is not part of $controllerClass");
     }
 
-    call_user_func_array(array($controller, $action), $parameters);
+    var_dump([$controller, $action], $parameters);
+    call_user_func_array([$controller, $action], $parameters);
 }

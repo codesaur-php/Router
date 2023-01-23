@@ -8,6 +8,6 @@ interface RouterInterface
     
     public function merge(RouterInterface $router);
     
-    public function match(string $pattern, string $method);
-    public function generate(string $routeName, array $params);
+    public function match(string $pattern, string $method): Callback|null;
+    public function generate(string $routeName, array $params): string;
 }

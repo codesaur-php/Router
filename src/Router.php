@@ -2,13 +2,10 @@
 
 namespace codesaur\Router;
 
-use OutOfRangeException;
-use InvalidArgumentException;
-
 class Router implements RouterInterface
 {
-    protected $routes = array();
-    protected $name_patterns = array();
+    protected array $routes = [];
+    protected array $name_patterns = [];
     
     const FILTERS_REGEX = '/\{(int:|uint:|float:|utf8:)?(\w+)}/';
 
@@ -21,14 +18,14 @@ class Router implements RouterInterface
     public function &__call(string $method, array $properties)
     {
         if (empty($properties[0]) || empty($properties[1])) {
-            throw new InvalidArgumentException('Invalid route configuration for ' . __CLASS__ . ":$method");
+            throw new \InvalidArgumentException('Invalid route configuration for ' . __CLASS__ . ":$method");
         }
         
         $this->pattern = $properties[0];
         if (is_array($properties[1]) || is_callable($properties[1])) {
             $callback = new Callback($properties[1]);
         } else {
-            throw new InvalidArgumentException(__CLASS__ . ": Invalid callback on route pattern [$this->pattern]");
+            throw new \InvalidArgumentException(__CLASS__ . ": Invalid callback on route pattern [$this->pattern]");
         }
         
         $this->routes[$this->pattern][$method] = $callback;
@@ -44,7 +41,7 @@ class Router implements RouterInterface
         }
     }
     
-    public function match(string $path, string $method)
+    public function match(string $path, string $method): Callback|null
     {
         foreach ($this->routes as $pattern => $route) {
             foreach ($route as $methods => $callback) {
@@ -56,8 +53,8 @@ class Router implements RouterInterface
                     return $callback;
                 }
 
-                $filters = array();
-                $paramMatches = array();
+                $filters = [];
+                $paramMatches = [];
                 if (!preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
                     continue;
                 }
@@ -71,7 +68,7 @@ class Router implements RouterInterface
                     }
                 }
 
-                $matches = array();
+                $matches = [];
                 $regex = $this->getPatternRegex($pattern, $filters);
                 if (!preg_match("@^$regex/?$@i", $path, $matches)
                     || count($paramMatches[2]) != (count($matches) - 1)
@@ -88,12 +85,12 @@ class Router implements RouterInterface
                         } elseif ($filter == self::UTF8_REGEX) {
                             $params[$name] = urldecode($matches[$key + 1]);
                         } elseif ($filter == self::FLOAT_REGEX) {
-                            $params[$name] = (float)$matches[$key + 1];
+                            $params[$name] = (float) $matches[$key + 1];
                         } else {
-                            $params[$name] = (int)$matches[$key + 1];
+                            $params[$name] = (int) $matches[$key + 1];
                         }
                     }
-                }                
+                }
                 $callback->setParameters($params);
                 
                 return $callback;
@@ -112,7 +109,7 @@ class Router implements RouterInterface
         }
     }
     
-    public function generate(string $ruleName, array $params = [])
+    public function generate(string $ruleName, array $params = []): string
     {
         if (!isset($this->name_patterns[$ruleName])) {
             if (defined('CODESAUR_DEVELOPMENT')
@@ -121,7 +118,7 @@ class Router implements RouterInterface
                 error_log("NO RULE: $ruleName");
             }
             
-            throw new OutOfRangeException(__CLASS__ . ": Route with rule named [$ruleName] not found");
+            throw new \OutOfRangeException(__CLASS__ . ": Route with rule named [$ruleName] not found");
         }
 
         $pattern = $this->name_patterns[$ruleName];
@@ -129,7 +126,7 @@ class Router implements RouterInterface
             return $pattern;
         }
         
-        $paramMatches = array();
+        $paramMatches = [];
         if (preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
             foreach ($paramMatches[2] as $index => $key) {
                 if (isset($params[$key])) {
@@ -137,18 +134,18 @@ class Router implements RouterInterface
                     switch ($filter) {
                         case 'float:':
                             if (!is_numeric($params[$key])) {
-                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value");
+                                throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value");
                             }
                             break;
                         case 'int:':
                             if (!is_int($params[$key])) {
-                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
+                                throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
                             }
                             break;
                         case 'uint':
-                            $is_uint = filter_var($params[$key], FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
+                            $is_uint = filter_var($params[$key], \FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
                             if ($is_uint === false) {
-                                throw new InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");
+                                throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");
                             }
                             break;
                     }
@@ -165,7 +162,7 @@ class Router implements RouterInterface
         return $this->routes;
     }
     
-    final function getPatternRegex($pattern, array $filters): string
+    final function getPatternRegex(string $pattern, array $filters): string
     {
         $parts = explode('/', $pattern);
         foreach ($parts as &$part) {
