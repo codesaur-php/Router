@@ -5,6 +5,7 @@ namespace codesaur\Router;
 class Router implements RouterInterface
 {
     protected array $routes = [];
+    
     protected array $name_patterns = [];
     
     private string $_pattern;
