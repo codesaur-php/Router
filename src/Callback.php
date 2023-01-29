@@ -8,7 +8,7 @@ class Callback
     
     private array $_params = [];
     
-    function __construct($callable)
+    public function __construct($callable)
     {
         $this->_callable = $callable;
     }
