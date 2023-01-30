@@ -165,7 +165,7 @@ class Router implements RouterInterface
         return $this->routes;
     }
     
-    final function getPatternRegex(string $pattern, array $filters): string
+    private function getPatternRegex(string $pattern, array $filters): string
     {
         $parts = explode('/', $pattern);
         foreach ($parts as &$part) {
