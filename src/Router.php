@@ -25,7 +25,7 @@ class Router implements RouterInterface
         }
         
         $this->_pattern = $properties[0];
-        if (is_array($properties[1]) || is_callable($properties[1])) {
+        if (\is_array($properties[1]) || \is_callable($properties[1])) {
             $callback = new Callback($properties[1]);
         } else {
             throw new \InvalidArgumentException(__CLASS__ . ": Invalid callback on route pattern [$this->_pattern]");
@@ -48,7 +48,7 @@ class Router implements RouterInterface
     {
         foreach ($this->routes as $pattern => $route) {
             foreach ($route as $methods => $callback) {
-                if (!in_array($method, explode('_', $methods))) {
+                if (!\in_array($method, \explode('_', $methods))) {
                     continue;
                 }
                 
@@ -58,7 +58,7 @@ class Router implements RouterInterface
 
                 $filters = [];
                 $paramMatches = [];
-                if (!preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
+                if (!\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
                     continue;
                 }
                 foreach ($paramMatches[2] as $index => $param) {
@@ -73,8 +73,8 @@ class Router implements RouterInterface
 
                 $matches = [];
                 $regex = $this->getPatternRegex($pattern, $filters);
-                if (!preg_match("@^$regex/?$@i", $path, $matches)
-                    || count($paramMatches[2]) != (count($matches) - 1)
+                if (!\preg_match("@^$regex/?$@i", $path, $matches)
+                    || \count($paramMatches[2]) != (\count($matches) - 1)
                 ) {
                     continue;
                 }
@@ -86,7 +86,7 @@ class Router implements RouterInterface
                         if ($filter == self::DEFAULT_REGEX) {
                             $params[$name] = $matches[$key + 1];
                         } elseif ($filter == self::UTF8_REGEX) {
-                            $params[$name] = urldecode($matches[$key + 1]);
+                            $params[$name] = \urldecode($matches[$key + 1]);
                         } elseif ($filter == self::FLOAT_REGEX) {
                             $params[$name] = (float) $matches[$key + 1];
                         } else {
@@ -105,7 +105,7 @@ class Router implements RouterInterface
     
     public function merge(RouterInterface $router)
     {
-        $this->routes = array_merge($this->routes, $router->getRoutes());
+        $this->routes = \array_merge($this->routes, $router->getRoutes());
         
         if (!empty($router->name_patterns)) {
             $this->name_patterns += $router->name_patterns;
@@ -115,10 +115,10 @@ class Router implements RouterInterface
     public function generate(string $ruleName, array $params = []): string
     {
         if (!isset($this->name_patterns[$ruleName])) {
-            if (defined('CODESAUR_DEVELOPMENT')
+            if (\defined('CODESAUR_DEVELOPMENT')
                 && CODESAUR_DEVELOPMENT
             ) {
-                error_log("NO RULE: $ruleName");
+                \error_log("NO RULE: $ruleName");
             }
             
             throw new \OutOfRangeException(__CLASS__ . ": Route with rule named [$ruleName] not found");
@@ -130,29 +130,29 @@ class Router implements RouterInterface
         }
         
         $paramMatches = [];
-        if (preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
+        if (\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
             foreach ($paramMatches[2] as $index => $key) {
                 if (isset($params[$key])) {
                     $filter = $paramMatches[1][$index];
                     switch ($filter) {
                         case 'float:':
-                            if (!is_numeric($params[$key])) {
+                            if (!\is_numeric($params[$key])) {
                                 throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be float value");
                             }
                             break;
                         case 'int:':
-                            if (!is_int($params[$key])) {
+                            if (!\is_int($params[$key])) {
                                 throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be integer value");
                             }
                             break;
                         case 'uint:':
-                            $is_uint = filter_var($params[$key], \FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+                            $is_uint = \filter_var($params[$key], \FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
                             if ($is_uint === false) {
                                 throw new \InvalidArgumentException(__CLASS__ . ": [$pattern] Route parameter expected to be unsigned integer value");
                             }
                             break;
                     }
-                    $pattern = preg_replace('/\{' . $filter . '(\w+)\}/', $params[$key], $pattern, 1);
+                    $pattern = \preg_replace('/\{' . $filter . '(\w+)\}/', $params[$key], $pattern, 1);
                 }
             }
         }
@@ -167,14 +167,14 @@ class Router implements RouterInterface
     
     private function getPatternRegex(string $pattern, array $filters): string
     {
-        $parts = explode('/', $pattern);
+        $parts = \explode('/', $pattern);
         foreach ($parts as &$part) {
             if ($part != '' && $part[0] != '{') {
-                $part = urlencode($part);
+                $part = \urlencode($part);
             }
         }
-        return preg_replace_callback(self::FILTERS_REGEX, function ($matches) use ($filters) {
+        return \preg_replace_callback(self::FILTERS_REGEX, function ($matches) use ($filters) {
             return isset($matches[2]) && isset($filters[$matches[2]]) ? $filters[$matches[2]] : '(\w+)';
-        }, implode('/', $parts));
+        }, \implode('/', $parts));
     }
 }

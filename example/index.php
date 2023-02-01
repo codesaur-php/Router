@@ -7,8 +7,8 @@ namespace codesaur\Router\Example;
  * This is an example script!
  */
 
-ini_set('display_errors', 'On');
-error_reporting(\E_ALL);
+\ini_set('display_errors', 'On');
+\error_reporting(\E_ALL);
 
 require_once '../vendor/autoload.php';
 
@@ -45,7 +45,7 @@ class ExampleController
         float $number,
         string $word
     ) {
-        var_dump($singleword, $firstname, $lastname, $a, $b, $number, $word);
+        \var_dump($singleword, $firstname, $lastname, $a, $b, $number, $word);
     }
     
     public function post()
@@ -64,7 +64,7 @@ class ExampleController
     
     public function number(float $number)
     {
-        var_dump($number);
+        \var_dump($number);
     }
 }
 
@@ -88,7 +88,7 @@ $router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b)
 {
     $sum = $a + $b;
 
-    var_dump($a, $b, $sum);
+    \var_dump($a, $b, $sum);
     
     echo "<br/>$a + $b = $sum";
 })->name('sum');
@@ -110,38 +110,38 @@ $router->GET('/generate', function () use ($router)
     ]);
 });
 
-$request_uri = preg_replace('/\/+/', '\\1/', $_SERVER['REQUEST_URI']);
-if (($pos = strpos($request_uri, '?')) !== false) {
-    $request_uri = substr($request_uri, 0, $pos);
+$request_uri = \preg_replace('/\/+/', '\\1/', $_SERVER['REQUEST_URI']);
+if (($pos = \strpos($request_uri, '?')) !== false) {
+    $request_uri = \substr($request_uri, 0, $pos);
 }
-$uri_path = rtrim($request_uri, '/');
-$sp_lngth = strlen(dirname($_SERVER['SCRIPT_NAME']));
-$target_path = $sp_lngth > 1 ? substr($uri_path, $sp_lngth) : $uri_path;
+$uri_path = \rtrim($request_uri, '/');
+$sp_lngth = \strlen(dirname($_SERVER['SCRIPT_NAME']));
+$target_path = $sp_lngth > 1 ? \substr($uri_path, $sp_lngth) : $uri_path;
 if (empty($target_path)) {
     $target_path = '/';
 }
 
 $callback = $router->match($target_path, $_SERVER['REQUEST_METHOD']);
 if (!$callback instanceof Callback) {
-    http_response_code(404);
-    die('Unknown route pattern [' . rawurldecode($target_path) . ']');
+    \http_response_code(404);
+    die('Unknown route pattern [' . \rawurldecode($target_path) . ']');
 }
 
 $callable = $callback->getCallable();
 $parameters = $callback->getParameters();
 if ($callable instanceof \Closure) {
-    call_user_func_array($callable, $parameters);
+    \call_user_func_array($callable, $parameters);
 } else {
     $controllerClass = $callable[0];
-    if (!class_exists($controllerClass)) {
+    if (!\class_exists($controllerClass)) {
         die("$controllerClass is not available");
     }
 
     $action = $callable[1];
     $controller = new $controllerClass();
-    if (!method_exists($controller, $action)) {
+    if (!\method_exists($controller, $action)) {
         die("Action named $action is not part of $controllerClass");
     }
     
-    call_user_func_array([$controller, $action], $parameters);
+    \call_user_func_array([$controller, $action], $parameters);
 }
