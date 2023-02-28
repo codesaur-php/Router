@@ -79,14 +79,14 @@ class Router implements RouterInterface
                     continue;
                 }
                 
-                $params = array();
+                $params = [];
                 foreach ($paramMatches[2] as $key => $name) {
                     if (isset($matches[$key + 1])) {
                         $filter = $filters[$name];
                         if ($filter == self::DEFAULT_REGEX) {
                             $params[$name] = $matches[$key + 1];
                         } elseif ($filter == self::UTF8_REGEX) {
-                            $params[$name] = \urldecode($matches[$key + 1]);
+                            $params[$name] = \rawurldecode($matches[$key + 1]);
                         } elseif ($filter == self::FLOAT_REGEX) {
                             $params[$name] = (float) $matches[$key + 1];
                         } else {
@@ -170,7 +170,7 @@ class Router implements RouterInterface
         $parts = \explode('/', $pattern);
         foreach ($parts as &$part) {
             if ($part != '' && $part[0] != '{') {
-                $part = \urlencode($part);
+                $part = \rawurlencode($part);
             }
         }
         return \preg_replace_callback(self::FILTERS_REGEX, function ($matches) use ($filters) {
