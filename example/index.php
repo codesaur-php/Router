@@ -72,13 +72,13 @@ $router = new Router();
 
 $router->GET('/', [ExampleController::class, 'index']);
 
-$router->POST('/сайнуу/{utf8:firstname}', [ExampleController::class, 'greetings']);
+$router->POST('/сайнуу/{firstname}', [ExampleController::class, 'greetings']);
 
 $router->GET('/echo/{singleword}', [ExampleController::class, 'echo'])->name('echo');
 
-$router->GET('/hello/{utf8:firstname}/{utf8:lastname}', [ExampleController::class, 'greetings'])->name('hello');
+$router->GET('/hello/{firstname}/{lastname}', [ExampleController::class, 'greetings'])->name('hello');
 
-$router->GET('/test-all-filters/{singleword}/{utf8:firstname}/{utf8:lastname}/{int:a}/{uint:b}/{float:number}/{utf8:word}', [ExampleController::class, 'test'])->name('test-filters');
+$router->GET('/test-all-filters/{singleword}/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{word}', [ExampleController::class, 'test'])->name('test-filters');
 
 $router->POST('/hello', [ExampleController::class, 'post']);
 
@@ -107,8 +107,43 @@ $router->GET('/generate', function () use ($router)
         'b' => 976,
         'number' => 173.5,
         'word' => 'Энэ бол жишээ!'
-    ]);
+    ]) . '<br/>';
+    echo '50k routes generating&matching speed testing => ' . $router->generate('speed-test') . '<br/>';
 });
+
+$router->GET('/speed/test', function () use ($router)
+{
+    $count = 10000;    
+    echo "- Testing speed of generate&match on $count routes -<br/>";
+    
+    $routes = []; 
+    $index = $count;
+    $start_generate = \microtime(true);
+    while ($index > 0) {
+        $routes[] = $router->generate('hello', ['firstname' => 'Тэмүжин Хан', 'lastname' => 'Chenghis Khaan']);
+        $index--;
+    }
+    $end_generate = \microtime(true);
+    $total_generate = $end_generate - $start_generate;
+    var_dump([
+        '$start_utf8_generate' => $start_generate,
+        '$end_utf8_generate' => $end_generate,
+        '$end_utf8_generate - $start_utf8_generate' => $total_generate
+    ]);
+    
+    $start_match = \microtime(true);
+    while ($index < $count) {
+        $router->match($routes[$index], 'GET');
+        $index++;
+    }
+    $end_match = \microtime(true);
+    $total_match = $end_match - $start_match;
+    var_dump([
+        '$start_utf8_match' => $start_match,
+        '$end_utf8_match' => $end_match,
+        '$end_utf8_match - $start_utf8_match' => $total_match
+    ]);
+})->name('speed-test');
 
 $request_uri = \preg_replace('/\/+/', '\\1/', $_SERVER['REQUEST_URI']);
 if (($pos = \strpos($request_uri, '?')) !== false) {

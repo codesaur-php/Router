@@ -10,13 +10,12 @@ class Router implements RouterInterface
     
     private string $_pattern;
     
-    const FILTERS_REGEX = '/\{(int:|uint:|float:|utf8:)?(\w+)}/';
+    const FILTERS_REGEX = '/\{(int:|uint:|float:)?(\w+)}/';
 
     const INT_REGEX = '(-?\d+)';
     const UNSIGNED_INT_REGEX ='(\d+)';
     const FLOAT_REGEX = '(-?\d+|-?\d*\.\d+)';
-    const UTF8_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
-    const DEFAULT_REGEX = '(\w+)';
+    const DEFAULT_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
     
     public function &__call(string $method, array $properties)
     {
@@ -66,7 +65,6 @@ class Router implements RouterInterface
                         case 'int:': $filters[$param] = self::INT_REGEX; break;
                         case 'uint:': $filters[$param] = self::UNSIGNED_INT_REGEX; break;
                         case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
-                        case 'utf8:': $filters[$param] = self::UTF8_REGEX; break;
                         default: $filters[$param] = self::DEFAULT_REGEX;
                     }
                 }
@@ -84,8 +82,6 @@ class Router implements RouterInterface
                     if (isset($matches[$key + 1])) {
                         $filter = $filters[$name];
                         if ($filter == self::DEFAULT_REGEX) {
-                            $params[$name] = $matches[$key + 1];
-                        } elseif ($filter == self::UTF8_REGEX) {
                             $params[$name] = \rawurldecode($matches[$key + 1]);
                         } elseif ($filter == self::FLOAT_REGEX) {
                             $params[$name] = (float) $matches[$key + 1];
