@@ -126,9 +126,9 @@ $router->GET('/speed/test', function () use ($router)
     $end_generate = \microtime(true);
     $total_generate = $end_generate - $start_generate;
     var_dump([
-        '$start_utf8_generate' => $start_generate,
-        '$end_utf8_generate' => $end_generate,
-        '$end_utf8_generate - $start_utf8_generate' => $total_generate
+        '$start_generate' => $start_generate,
+        '$end_generate' => $end_generate,
+        '$end_generate - $start_generate' => $total_generate
     ]);
     
     $start_match = \microtime(true);
@@ -139,9 +139,9 @@ $router->GET('/speed/test', function () use ($router)
     $end_match = \microtime(true);
     $total_match = $end_match - $start_match;
     var_dump([
-        '$start_utf8_match' => $start_match,
-        '$end_utf8_match' => $end_match,
-        '$end_utf8_match - $start_utf8_match' => $total_match
+        '$start_match' => $start_match,
+        '$end_match' => $end_match,
+        '$end_match - $start_match' => $total_match
     ]);
 })->name('speed-test');
 
