@@ -111,12 +111,6 @@ class Router implements RouterInterface
     public function generate(string $ruleName, array $params = []): string
     {
         if (!isset($this->name_patterns[$ruleName])) {
-            if (\defined('CODESAUR_DEVELOPMENT')
-                && CODESAUR_DEVELOPMENT
-            ) {
-                \error_log("NO RULE: $ruleName");
-            }
-            
             throw new \OutOfRangeException(__CLASS__ . ": Route with rule named [$ruleName] not found");
         }
 
