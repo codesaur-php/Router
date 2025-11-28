@@ -2,7 +2,7 @@
     "name": "codesaur/router",
     "description": "An elegant object-oriented application development framework component for PHP 8.2.1 or newer",
     "keywords": [
-        "router", "route", "mongol", "mongolia", "mongolian", "монгол", "codesaur", "кодзавр", "narankhuu", "наранхүү", "ololt", "ололт", "мөнхийн ололт", "munkhiin ololt"
+        "router", "route", "mongol", "mongolia", "монгол", "codesaur", "narankhuu", "coden", "кодзавр", "наранхүү", "коден"
     ],
     "homepage": "https://github.com/codesaur-php",
     "authors": [

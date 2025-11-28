@@ -2,40 +2,80 @@
 
 namespace codesaur\Router\Example;
 
-/* DEV: v1.2021.03.02
- * 
- * This is an example script!
+/**
+ * -----------------------------------------------------------------------------
+ * codesaur/router — Жишээ скрипт
+ * -----------------------------------------------------------------------------
+ *
+ * Энэ файл нь codesaur/router ашиглан маршрутуудыг үүсгэх,
+ * тааруулах (match), болон callback гүйцэтгэх жишээг бүрэн харуулна.
+ *
+ * Багтаасан жишээнүүд:
+ *   • GET / POST маршрут бүртгэх
+ *   • Динамик параметртэй маршрут авах
+ *       {firstname}, {int:id}, {uint:b}, {float:number} гэх мэт
+ *   • Нэртэй route → URL generate хийх
+ *   • Controller болон Closure callback хоёрыг хоёуланг нь дэмжих
+ *   • 10,000 маршрутын generate & match хурд шалгах тест
+ *
+ * -----------------------------------------------------------------------------
  */
 
 \ini_set('display_errors', 'On');
 \error_reporting(\E_ALL);
 
-require_once '../vendor/autoload.php';
+require '../vendor/autoload.php';
 
 use codesaur\Router\Callback;
 use codesaur\Router\Router;
 
+/**
+ * ExampleController — Демонстрацийн зориулалттай controller
+ */
 class ExampleController
 {
+    /** Энгийн GET / маршрут */
     public function index()
     {
-        echo '<br/>This is an example script!';
+        // Script байгаа үндсэн замыг автоматаар тодорхойлох
+        $base = \rtrim(\dirname($_SERVER['SCRIPT_NAME']), '/');
+        if ($base === '') {
+            $base = '/';
+        }
+
+        echo '<h3>Энэ бол codesaur/router багцын туршилтын жишээ!</h3>';
+
+        echo "<p>Доорх нь энэ жишээ файл дээр бүртгэгдсэн бүх маршрутууд:</p>";
+
+        echo "<ul>";
+        echo "<li><a href='{$base}/echo/test'>/echo/test</a></li>";
+        echo "<li><a href='{$base}/hello/Тэмүжин/Хан'>/hello/{firstname}/{lastname}</a></li>";
+        echo "<li><a href='{$base}/test-all-filters/word/f/f/10/20/1.5/sample'>/test-all-filters/*</a></li>";
+        echo "<li><a href='{$base}/numeric/7.53'>/numeric/{float}</a></li>";
+        echo "<li><a href='{$base}/sum/5/7'>/sum/{int:a}/{uint:b}</a></li>";
+        echo "<li><a href='{$base}/generate'>/generate (URL үүсгэх тест)</a></li>";
+        echo "<li><a href='{$base}/speed/test'>/speed/test (Гүйцэтгэл тест)</a></li>";
+        echo "<li><a href='{$base}/сайнуу/Наранхүү'>/сайнуу/Наранхүү (POST хүсэлт байх ёстой)</a></li>";
+        echo "</ul>";
     }
 
+    /** Нэр угтах */
     public function greetings(string $firstname, ?string $lastname = null)
     {
         $name = $firstname;
         if (!empty($lastname)) {
             $name .= " $lastname";
         }
-        echo "<br/>Hello $name!";
+        echo "<br/>Сайн байна уу, $name!";
     }
-    
+
+    /** Нэг үг хэвлэх */
     public function echo(string $singleword)
     {
-        echo "<br/>Single word => $singleword";
+        echo "<br/>Нэг үг: $singleword";
     }
-    
+
+    /** Бүх төрлийн filter шалгах */
     public function test(
         string $singleword,
         string $firstname,
@@ -45,110 +85,159 @@ class ExampleController
         float $number,
         string $word
     ) {
-        \var_dump($singleword, $firstname, $lastname, $a, $b, $number, $word);
+        var_dump($singleword, $firstname, $lastname, $a, $b, $number, $word);
     }
-    
+
+    /** POST request хүлээн авах */
     public function post()
     {
         if (empty($_POST['firstname'])) {
-            die('Invalid request!');
+            die("Алдаа: Хүсэлт буруу байна!");
         }
-        
+
         $name = $_POST['firstname'];
         if (!empty($_POST['lastname'])) {
             $name .= " {$_POST['lastname']}";
         }
 
-        $this->greetings($name);
+        echo "<br/>Сайн уу, $name!";
     }
-    
+
+    /** Float параметртэй тест */
     public function number(float $number)
     {
         \var_dump($number);
     }
 }
 
+/* -----------------------------------------------------------------------------
+ *  ROUTES — Маршрут бүртгэх хэсэг
+ * ---------------------------------------------------------------------------*/
+
 $router = new Router();
 
+/* Энгийн GET / */
 $router->GET('/', [ExampleController::class, 'index']);
 
+
+/* POST /сайнуу/{firstname} */
 $router->POST('/сайнуу/{firstname}', [ExampleController::class, 'greetings']);
 
-$router->GET('/echo/{singleword}', [ExampleController::class, 'echo'])->name('echo');
 
-$router->GET('/hello/{firstname}/{lastname}', [ExampleController::class, 'greetings'])->name('hello');
+/* GET /echo/{singleword} */
+$router->GET('/echo/{singleword}', [ExampleController::class, 'echo'])
+    ->name('echo');
 
-$router->GET('/test-all-filters/{singleword}/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{word}', [ExampleController::class, 'test'])->name('test-filters');
 
+/* GET /hello/{firstname}/{lastname} */
+$router->GET('/hello/{firstname}/{lastname}', [ExampleController::class, 'greetings'])
+    ->name('hello');
+
+
+/* Бүх төрлийн regex filter-тэй маршрут */
+$router->GET('/test-all-filters/{singleword}/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{word}',
+    [ExampleController::class, 'test']
+)->name('test-filters');
+
+
+/* POST form test */
 $router->POST('/hello', [ExampleController::class, 'post']);
 
-$router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])->name('float');
 
-$router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b)
-{
+/* Float parameter */
+$router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])
+    ->name('float');
+
+
+/* Closure — сумын нийлбэр */
+$router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
     $sum = $a + $b;
-
-    \var_dump($a, $b, $sum);
-    
     echo "<br/>$a + $b = $sum";
 })->name('sum');
 
+
+/* URL generate тест */
 $router->GET('/generate', function () use ($router)
 {
-    echo 'Single word => ' . $router->generate('echo', ['singleword' => 'Congrats']) . '<br/>';
-    echo 'Hello Наранхүү => ' . $router->generate('hello', ['firstname' => 'Наранхүү', 'lastname' => 'aka codesaur']) . '<br/>';
-    echo 'Summary of 14 and -5 => ' . $router->generate('sum', ['a' => -5, 'b' => 14]) . '<br/>';
-    echo 'Float number 753.9 => ' . $router->generate('float', ['number' => 753.9]) . '<br/>';
-    echo 'Test filters => ' . $router->generate('test-filters', [
-        'singleword' => 'example',
+    echo "<h3>URL үүсгэх тест (generate)</h3>";
+
+    echo 'echo → ' . $router->generate('echo', ['singleword' => 'Амжилт']) . '<br/>';
+    echo 'hello → ' . $router->generate('hello', [
         'firstname' => 'Наранхүү',
-        'lastname' => 'aka codesaur',
-        'a' => -10,
-        'b' => 976,
-        'number' => 173.5,
-        'word' => 'Энэ бол жишээ!'
+        'lastname' => 'codesaur'
     ]) . '<br/>';
-    echo '50k routes generating&matching speed testing => ' . $router->generate('speed-test') . '<br/>';
+    echo 'sum → ' . $router->generate('sum', ['a' => 7, 'b' => 13]) . '<br/>';
+    echo 'float → ' . $router->generate('float', ['number' => 753.9]) . '<br/>';
+    echo 'test-filters → ' . $router->generate('test-filters', [
+        'singleword' => 'demo',
+        'firstname' => 'Болд',
+        'lastname' => 'Баатар',
+        'a' => -10,
+        'b' => 999,
+        'number' => 17.55,
+        'word' => 'Жишээ текст'
+    ]) . '<br/>';
+
+    // Script байгаа үндсэн замыг автоматаар тодорхойлох
+    $base = \rtrim(\dirname($_SERVER['SCRIPT_NAME']), '/');
+    if ($base === '') {
+        $base = '/';
+    }
+    echo '<br/><b>Гүйцэтгэл тест рүү:</b> <a href="' . $base . '/speed/test">/speed/test</a>';
 });
+
+
+/* -----------------------------------------------------------------------------
+ *  ГҮЙЦЭТГЭЛ ШАЛГАХ — 10,000 generate & match
+ * ---------------------------------------------------------------------------*/
 
 $router->GET('/speed/test', function () use ($router)
 {
-    $count = 10000;    
-    echo "- Testing speed of generate&match on $count routes -<br/>";
-    
-    $routes = []; 
+    $count = 10000;
+
+    echo "<h3>Гүйцэтгэл шалгах тест (generate & match)</h3>";
+    echo "<p>$count удаагийн generate болон match тест хийгдэнэ.</p>";
+
+    $routes = [];
     $index = $count;
+
+    /* ---- URL generate хурд ---- */
     $start_generate = \microtime(true);
     while ($index > 0) {
-        $routes[] = $router->generate('hello', ['firstname' => 'Тэмүжин Хан', 'lastname' => 'Chenghis Khaan']);
+        $routes[] = $router->generate('hello', [
+            'firstname' => 'Тэмүжин',
+            'lastname' => 'Хан'
+        ]);
         $index--;
     }
     $end_generate = \microtime(true);
-    $total_generate = $end_generate - $start_generate;
-    var_dump([
-        '$start_generate' => $start_generate,
-        '$end_generate' => $end_generate,
-        '$end_generate - $start_generate' => $total_generate
-    ]);
-    
+
+    echo "<b>URL үүсгэх хугацаа:</b> " . ($end_generate - $start_generate) . " сек<br/>";
+
+
+    /* ---- match() шалгах хурд ---- */
     $start_match = \microtime(true);
     while ($index < $count) {
         $router->match($routes[$index], 'GET');
         $index++;
     }
     $end_match = \microtime(true);
-    $total_match = $end_match - $start_match;
-    var_dump([
-        '$start_match' => $start_match,
-        '$end_match' => $end_match,
-        '$end_match - $start_match' => $total_match
-    ]);
+
+    echo "<b>Маршрут тааруулах хугацаа:</b> " . ($end_match - $start_match) . " сек<br/>";
+
 })->name('speed-test');
 
+
+/* -----------------------------------------------------------------------------
+ *  REQUEST → MATCH → DISPATCH
+ * ---------------------------------------------------------------------------*/
+
+/* URL-ийг цэвэрлэх */
 $request_uri = \preg_replace('/\/+/', '\\1/', $_SERVER['REQUEST_URI']);
 if (($pos = \strpos($request_uri, '?')) !== false) {
     $request_uri = \substr($request_uri, 0, $pos);
 }
+
 $uri_path = \rtrim($request_uri, '/');
 $sp_lngth = \strlen(dirname($_SERVER['SCRIPT_NAME']));
 $target_path = $sp_lngth > 1 ? \substr($uri_path, $sp_lngth) : $uri_path;
@@ -156,27 +245,33 @@ if (empty($target_path)) {
     $target_path = '/';
 }
 
+/* Маршрут тааруулах */
 $callback = $router->match($target_path, $_SERVER['REQUEST_METHOD']);
+
 if (!$callback instanceof Callback) {
     \http_response_code(404);
-    die('Unknown route pattern [' . \rawurldecode($target_path) . ']');
+    die("Тохирох маршрут олдсонгүй: [" . \rawurldecode($target_path) . "]");
 }
 
+/* Callback гүйцэтгэх */
 $callable = $callback->getCallable();
 $parameters = $callback->getParameters();
+
 if ($callable instanceof \Closure) {
     \call_user_func_array($callable, $parameters);
 } else {
-    $controllerClass = $callable[0];
-    if (!\class_exists($controllerClass)) {
-        die("$controllerClass is not available");
+    $class = $callable[0];
+    $action = $callable[1];
+
+    if (!\class_exists($class)) {
+        die("Controller класс олдсонгүй: $class");
     }
 
-    $action = $callable[1];
-    $controller = new $controllerClass();
+    $controller = new $class();
+
     if (!\method_exists($controller, $action)) {
-        die("Action named $action is not part of $controllerClass");
+        die("Action олдсонгүй: $action ($class)");
     }
-    
+
     \call_user_func_array([$controller, $action], $parameters);
 }
