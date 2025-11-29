@@ -39,14 +39,8 @@ class ExampleController
     {
         // Script байгаа үндсэн замыг автоматаар тодорхойлох
         $base = \rtrim(\dirname($_SERVER['SCRIPT_NAME']), '/');
-        if ($base === '') {
-            $base = '/';
-        }
-
         echo '<h3>Энэ бол codesaur/router багцын туршилтын жишээ!</h3>';
-
         echo "<p>Доорх нь энэ жишээ файл дээр бүртгэгдсэн бүх маршрутууд:</p>";
-
         echo "<ul>";
         echo "<li><a href='{$base}/echo/test'>/echo/test</a></li>";
         echo "<li><a href='{$base}/hello/Тэмүжин/Хан'>/hello/{firstname}/{lastname}</a></li>";
@@ -149,7 +143,7 @@ $router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])
     ->name('float');
 
 
-/* Closure — сумын нийлбэр */
+/* Closure — нийлбэр */
 $router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
     $sum = $a + $b;
     echo "<br/>$a + $b = $sum";
@@ -195,13 +189,11 @@ $router->GET('/speed/test', function () use ($router)
 {
     $count = 10000;
 
+    /* ---- URL generate хурд ---- */
     echo "<h3>Гүйцэтгэл шалгах тест (generate & match)</h3>";
     echo "<p>$count удаагийн generate болон match тест хийгдэнэ.</p>";
-
     $routes = [];
     $index = $count;
-
-    /* ---- URL generate хурд ---- */
     $start_generate = \microtime(true);
     while ($index > 0) {
         $routes[] = $router->generate('hello', [
@@ -212,17 +204,14 @@ $router->GET('/speed/test', function () use ($router)
     }
     $end_generate = \microtime(true);
 
-    echo "<b>URL үүсгэх хугацаа:</b> " . ($end_generate - $start_generate) . " сек<br/>";
-
-
     /* ---- match() шалгах хурд ---- */
+    echo "<b>URL үүсгэх хугацаа:</b> " . ($end_generate - $start_generate) . " сек<br/>";
     $start_match = \microtime(true);
     while ($index < $count) {
         $router->match($routes[$index], 'GET');
         $index++;
     }
     $end_match = \microtime(true);
-
     echo "<b>Маршрут тааруулах хугацаа:</b> " . ($end_match - $start_match) . " сек<br/>";
 
 })->name('speed-test');
