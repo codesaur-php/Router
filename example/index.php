@@ -113,42 +113,34 @@ $router = new Router();
 /* Энгийн GET / */
 $router->GET('/', [ExampleController::class, 'index']);
 
-
 /* POST /сайнуу/{firstname} */
 $router->POST('/сайнуу/{firstname}', [ExampleController::class, 'greetings']);
-
 
 /* GET /echo/{singleword} */
 $router->GET('/echo/{singleword}', [ExampleController::class, 'echo'])
     ->name('echo');
 
-
 /* GET /hello/{firstname}/{lastname} */
 $router->GET('/hello/{firstname}/{lastname}', [ExampleController::class, 'greetings'])
     ->name('hello');
-
 
 /* Бүх төрлийн regex filter-тэй маршрут */
 $router->GET('/test-all-filters/{singleword}/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{word}',
     [ExampleController::class, 'test']
 )->name('test-filters');
 
-
 /* POST form test */
 $router->POST('/hello', [ExampleController::class, 'post']);
-
 
 /* Float parameter */
 $router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])
     ->name('float');
-
 
 /* Closure — нийлбэр */
 $router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
     $sum = $a + $b;
     echo "<br/>$a + $b = $sum";
 })->name('sum');
-
 
 /* URL generate тест */
 $router->GET('/generate', function () use ($router)
@@ -180,11 +172,9 @@ $router->GET('/generate', function () use ($router)
     echo '<br/><b>Гүйцэтгэл тест рүү:</b> <a href="' . $base . '/speed/test">/speed/test</a>';
 });
 
-
 /* -----------------------------------------------------------------------------
  *  ГҮЙЦЭТГЭЛ ШАЛГАХ — 10,000 generate & match
  * ---------------------------------------------------------------------------*/
-
 $router->GET('/speed/test', function () use ($router)
 {
     $count = 10000;
