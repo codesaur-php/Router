@@ -57,7 +57,7 @@ Hello Narankhuu!
 | `{int:id}` | `/post/{int:id}` | Сөрөг тоо зөвшөөрнө |
 | `{uint:page}` | `/users/{uint:page}` | Зөвхөн эерэг бүхэл тоо |
 | `{float:num}` | `/price/{float:num}` | 1.4, -2.56 гэх мэт |
-| `{word}` | `/tag/{word}` | A-z0–9 болон URL-safe тэмдэгтүүд |
+| `{word}` | `/tag/{word}` | A-z0-9 болон URL-safe тэмдэгтүүд |
 
 Жишээ:
 
@@ -129,6 +129,74 @@ $router->merge($moduleRouter);
 
 ---
 
+## Testing
+
+Энэ проект нь PHPUnit ашиглан бүрэн тест хийгдсэн байна.
+
+### Тест ажиллуулах
+
+Эхлээд dependencies суулгана:
+
+```bash
+composer install
+```
+
+Дараа нь тестүүдийг ажиллуулна:
+
+**Windows дээр:**
+```cmd
+vendor\bin\phpunit.bat
+```
+
+Эсвэл:
+```cmd
+php vendor\bin\phpunit
+```
+
+**Linux/Mac дээр:**
+```bash
+vendor/bin/phpunit
+```
+
+Эсвэл coverage-тэй хамт:
+
+**Windows:**
+```cmd
+vendor\bin\phpunit.bat --coverage-text
+```
+
+**Linux/Mac:**
+```bash
+vendor/bin/phpunit --coverage-text
+```
+
+### Тестүүдийн бүтэц
+
+Тестүүд нь дараах хэсгүүдэд хуваагдсан:
+
+- **RouterTest.php** - Router классын тестүүд:
+  - Маршрут бүртгэх (GET, POST, PUT, DELETE)
+  - Нэртэй маршрутууд
+  - Маршрут тааруулах (match) - бүх төрлийн параметрүүдтэй
+  - URL үүсгэх (generate)
+  - Router нэгтгэх (merge)
+  - Exception handling
+  - Edge cases (trailing slashes, URL encoding, Монгол үсэг)
+
+- **CallbackTest.php** - Callback классын тестүүд:
+  - Callback үүсгэх (Closure, function, array)
+  - Параметрүүд set/get хийх
+  - Олон төрлийн өгөгдлийн төрөл
+
+### Тест тохиргоо
+
+Тест тохиргоо нь `phpunit.xml` файлд байрлана. Энэ файл нь:
+- Test suite-ийг тодорхойлно
+- Coverage тохиргоог агуулна
+- Autoload-ийг тохируулна
+
+---
+
 ## Requirements
 
 - PHP 8.2.1+  
@@ -139,8 +207,9 @@ $router->merge($moduleRouter);
 ## Credits
 
 **Narankhuu**  
-<codesaur@gmail.com>  
-+976 99000287 
+📧 codesaur@gmail.com  
+📱 +976 99000287  
+🌐 https://github.com/codesaur  
 
 ---
 

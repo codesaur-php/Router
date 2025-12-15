@@ -35,6 +35,7 @@ class Callback
      * Callback constructor.
      *
      * @param callable $callable Гүйцэтгэх callable объект
+     *                           (function, Closure, array [Class, 'method'], гэх мэт)
      */
     public function __construct($callable)
     {
@@ -44,7 +45,7 @@ class Callback
     /**
      * Бүртгэлтэй callable-г буцаана.
      *
-     * @return callable
+     * @return callable Гүйцэтгэх callable объект
      */
     public function getCallable()
     {
@@ -54,7 +55,10 @@ class Callback
     /**
      * Маршрутаас дамжуулагдах параметрүүдийг буцаана.
      *
-     * @return array<string, mixed> Параметрийн массив
+     * Параметрүүд нь route pattern-ийн динамик хэсгүүдээс гаргаж авсан утгууд юм.
+     * Жишээ: /news/{int:id} pattern-д /news/10 path таарвал ['id' => 10] буцаана.
+     *
+     * @return array<string, mixed> Параметрийн массив (түлхүүр нь параметрийн нэр)
      */
     public function getParameters(): array
     {
@@ -64,7 +68,10 @@ class Callback
     /**
      * Callable-д дамжуулах параметрүүдийг онооно.
      *
-     * @param array<string, mixed> $parameters Параметрүүд
+     * Энэ метод нь ихэвчлэн Router::match() методоор дуудагдаж, route pattern-аас
+     * гаргаж авсан параметрүүдийг Callback объектод хадгална.
+     *
+     * @param array<string, mixed> $parameters Параметрүүд (түлхүүр нь параметрийн нэр)
      * @return void
      */
     public function setParameters(array $parameters)

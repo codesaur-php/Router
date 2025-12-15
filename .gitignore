@@ -1,4 +1,5 @@
 /vendor/
 /nbproject/
+.phpunit.cache/
 
 composer.lock

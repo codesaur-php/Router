@@ -4,7 +4,7 @@ namespace codesaur\Router\Example;
 
 /**
  * -----------------------------------------------------------------------------
- * codesaur/router — Жишээ скрипт
+ * codesaur/router - Жишээ скрипт
  * -----------------------------------------------------------------------------
  *
  * Энэ файл нь codesaur/router ашиглан маршрутуудыг үүсгэх,
@@ -30,7 +30,7 @@ use codesaur\Router\Callback;
 use codesaur\Router\Router;
 
 /**
- * ExampleController — Демонстрацийн зориулалттай controller
+ * ExampleController - Демонстрацийн зориулалттай controller
  */
 class ExampleController
 {
@@ -105,7 +105,7 @@ class ExampleController
 }
 
 /* -----------------------------------------------------------------------------
- *  ROUTES — Маршрут бүртгэх хэсэг
+ *  ROUTES - Маршрут бүртгэх хэсэг
  * ---------------------------------------------------------------------------*/
 
 $router = new Router();
@@ -136,7 +136,7 @@ $router->POST('/hello', [ExampleController::class, 'post']);
 $router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])
     ->name('float');
 
-/* Closure — нийлбэр */
+/* Closure - нийлбэр */
 $router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
     $sum = $a + $b;
     echo "<br/>$a + $b = $sum";
@@ -173,7 +173,7 @@ $router->GET('/generate', function () use ($router)
 });
 
 /* -----------------------------------------------------------------------------
- *  ГҮЙЦЭТГЭЛ ШАЛГАХ — 10,000 generate & match
+ *  ГҮЙЦЭТГЭЛ ШАЛГАХ - 10,000 generate & match
  * ---------------------------------------------------------------------------*/
 $router->GET('/speed/test', function () use ($router)
 {
