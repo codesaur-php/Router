@@ -1,4 +1,9 @@
 # 🦖 codesaur/router  
+
+[![CI](https://github.com/codesaur-php/Router/actions/workflows/ci.yml/badge.svg)](https://github.com/codesaur-php/Router/actions/workflows/ci.yml)
+[![PHP Version](https://img.shields.io/badge/php-8.2%2B-blue.svg)](https://www.php.net/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 PHP 8.2+ дээр ажиллах хөнгөн, хурдан, объект-суурьтай маршрутчиллын (routing) компонент
 
 `codesaur/router` нь codesaur PHP Framework-ийн нэг хэсэг боловч бие даасан байдлаар ашиглах боломжтой, жижиг хэмжээтэй боловч маш уян хатан Router компонент юм.
@@ -126,6 +131,29 @@ if ($callback instanceof Callback) {
 ```php
 $router->merge($moduleRouter);
 ```
+
+---
+
+## CI/CD
+
+Энэ проект нь GitHub Actions ашиглан автоматаар CI/CD хийгддэг:
+
+- ✅ Олон PHP хувилбарууд дээр тест (8.2, 8.3, 8.4)
+- ✅ Ubuntu болон Windows дээр тест
+- ✅ Composer dependencies суулгах
+- ✅ PHPUnit тестүүд ажиллуулах
+- ✅ Code coverage хэмжих
+
+CI/CD workflow нь `main`, `master`, `develop` салбарууд дээр push эсвэл pull request хийхэд автоматаар ажиллана.
+
+---
+
+## Documentation
+
+Энэ пакетийн дэлгэрэнгүй баримт бичгүүд:
+
+- 📚 **[API.md](API.md)** - Бүх public API-ийн дэлгэрэнгүй тайлбар, method-ууд, parameter-ууд, exception-ууд (Cursor AI)
+- 🔍 **[REVIEW.md](REVIEW.md)** - Код шалгалтын тайлан, давуу талууд, сайжруулах боломжууд  (Cursor AI)
 
 ---
 

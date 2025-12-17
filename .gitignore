@@ -1,5 +1,47 @@
+# Dependencies
 /vendor/
-/nbproject/
-.phpunit.cache/
-
 composer.lock
+
+# IDE
+/.idea/
+/.vscode/
+/.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# NetBeans
+/nbproject/
+/.nb-gradle/
+
+# PHPUnit
+.phpunit.cache/
+/phpunit.xml.bak
+/coverage/
+/coverage.xml
+*.coverage
+*.clover
+
+# Build artifacts
+/build/
+/dist/
+
+# Logs
+*.log
+/logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
