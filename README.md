@@ -1,7 +1,7 @@
 # 🦖 codesaur/router  
 
 [![CI](https://github.com/codesaur-php/Router/actions/workflows/ci.yml/badge.svg)](https://github.com/codesaur-php/Router/actions/workflows/ci.yml)
-[![PHP Version](https://img.shields.io/badge/php-8.2%2B-blue.svg)](https://www.php.net/)
+[![PHP Version](https://img.shields.io/badge/php-%5E8.2.1-777BB4.svg?logo=php)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Хөнгөн, хурдан, объект-суурьтай маршрутчиллын (routing) компонент
