@@ -176,17 +176,17 @@ DEFAULT string төрлийн параметрийн regex pattern. URL-safe т�
 
 ### Methods
 
-#### `__call(string $method, array $properties): Router`
+#### `__call(string $method, array $properties): static`
 
 Магик метод - GET, POST, PUT, DELETE гэх мэт маршрут бүртгэнэ.
 
 **Parameters:**
 - `string $method` - HTTP method нэр (GET, POST, PUT, DELETE, PATCH гэх мэт)
 - `array<mixed> $properties` - 
-  - `[0]` => route pattern (string)
-  - `[1]` => callback (callable|array)
+  - `[0]` => route pattern (string) - маршрутын pattern
+  - `[1]` => callback (callable|array) - гүйцэтгэх callback
 
-**Returns:** `Router` - Method chaining-д зориулж router объектыг буцаана
+**Returns:** `static` - Method chaining-д зориулж router объектыг буцаана
 
 **Throws:**
 - `\InvalidArgumentException` - Буруу маршрут тохиргоо үед (pattern эсвэл callback хоосон/буруу байвал)
@@ -326,34 +326,55 @@ Router-ийн маршрут бүрт тохирох callable (function, method,
 
 ### Constructor
 
-#### `__construct(callable $callable)`
+#### `__construct(callable|array $callable)`
 
 **Parameters:**
-- `callable $callable` - Гүйцэтгэх callable объект (function, Closure, array [Class, 'method'], гэх мэт)
+- `callable|array{class-string, string} $callable` - Гүйцэтгэх callable объект
+  - Function: `'function_name'`
+  - Closure: `function() { ... }`
+  - Static method: `[ClassName::class, 'methodName']`
+  - Instance method: `[$object, 'methodName']`
 
 **Example:**
 ```php
+// Closure
 $callback = new Callback(function($id) {
     return "ID: $id";
 });
 
+// Controller method
 $callback = new Callback([UserController::class, 'view']);
+
+// Function
+$callback = new Callback('my_function');
 ```
 
 ---
 
 ### Methods
 
-#### `getCallable(): callable`
+#### `getCallable(): callable|array`
 
 Бүртгэлтэй callable-г буцаана.
 
-**Returns:** `callable` - Гүйцэтгэх callable объект
+**Returns:** `callable|array{class-string, string}` - Гүйцэтгэх callable объект
 
 **Example:**
 ```php
 $callable = $callback->getCallable();
-call_user_func_array($callable, $params);
+
+if ($callable instanceof \Closure) {
+    // Closure
+    call_user_func_array($callable, $params);
+} else if (is_array($callable)) {
+    // Controller method
+    [$class, $method] = $callable;
+    $controller = new $class();
+    call_user_func_array([$controller, $method], $params);
+} else {
+    // Function
+    call_user_func_array($callable, $params);
+}
 ```
 
 ---
@@ -399,38 +420,82 @@ $callback->setParameters(['id' => 10, 'slug' => 'test']);
 
 Router нь дараах төрлийн параметрүүдийг дэмжинэ:
 
-| Төрөл | Pattern | Жишээ | Тайлбар |
-|------|---------|-------|---------|
-| Integer | `{int:id}` | `/post/{int:id}` | Сөрөг тоо зөвшөөрнө |
-| Unsigned Integer | `{uint:page}` | `/users/{uint:page}` | Зөвхөн эерэг бүхэл тоо (0 ба түүнээс дээш) |
-| Float | `{float:num}` | `/price/{float:num}` | 1.4, -2.56 гэх мэт |
-| String (default) | `{slug}` | `/tag/{slug}` | A-z0-9 болон URL-safe тэмдэгтүүд |
+| Төрөл | Pattern | Жишээ | Тайлбар | Regex |
+|------|---------|-------|---------|-------|
+| Integer | `{int:id}` | `/post/{int:id}` | Сөрөг тоо зөвшөөрнө | `(-?\d+)` |
+| Unsigned Integer | `{uint:page}` | `/users/{uint:page}` | Зөвхөн эерэг бүхэл тоо (0 ба түүнээс дээш) | `(\d+)` |
+| Float | `{float:num}` | `/price/{float:num}` | 1.4, -2.56 гэх мэт | `(-?\d+|-?\d*\.\d+)` |
+| String (default) | `{slug}` | `/tag/{slug}` | A-z0-9 болон URL-safe тэмдэгтүүд | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@-]+)` |
 
 **Example:**
 ```php
+// Олон төрлийн параметр ашиглах
 $router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
     echo "$a + $b = " . ($a + $b);
 });
+
+// Float параметр
+$router->GET('/price/{float:amount}', function (float $amount) {
+    echo "Price: $amount";
+});
+
+// String параметр (default)
+$router->GET('/tag/{slug}', function (string $slug) {
+    echo "Tag: $slug";
+});
 ```
+
+**Анхаарах зүйл:**
+- Параметрийн нэр нь route pattern болон callback function-ийн parameter name-тэй ижил байх ёстой
+- `generate()` method ашиглах үед параметрийн төрөл шалгагдана
 
 ---
 
 ## HTTP Methods
 
 Router нь дараах HTTP method-уудыг дэмжинэ:
-- GET
-- POST
-- PUT
-- DELETE
-- PATCH
+- **GET** - Өгөгдөл унших
+- **POST** - Шинэ өгөгдөл үүсгэх
+- **PUT** - Бүхэлд нь шинэчлэх
+- **DELETE** - Устгах
+- **PATCH** - Хэсэгчлэн шинэчлэх
 
 **Example:**
 ```php
-$router->GET('/users', function() { ... });
-$router->POST('/users', function() { ... });
-$router->PUT('/users/{int:id}', function($id) { ... });
-$router->DELETE('/users/{int:id}', function($id) { ... });
-$router->PATCH('/users/{int:id}', function($id) { ... });
+// GET - Өгөгдөл авах
+$router->GET('/users', function() {
+    return getAllUsers();
+});
+
+// POST - Шинэ хэрэглэгч үүсгэх
+$router->POST('/users', function() {
+    return createUser($_POST);
+});
+
+// PUT - Хэрэглэгч шинэчлэх
+$router->PUT('/users/{int:id}', function(int $id) {
+    return updateUser($id, $_POST);
+});
+
+// DELETE - Хэрэглэгч устгах
+$router->DELETE('/users/{int:id}', function(int $id) {
+    return deleteUser($id);
+});
+
+// PATCH - Хэсэгчлэн шинэчлэх
+$router->PATCH('/users/{int:id}', function(int $id) {
+    return partialUpdateUser($id, $_POST);
+});
+```
+
+**RESTful API жишээ:**
+```php
+// Users resource
+$router->GET('/users', [UserController::class, 'index'])->name('users.index');
+$router->GET('/users/{int:id}', [UserController::class, 'show'])->name('users.show');
+$router->POST('/users', [UserController::class, 'store'])->name('users.store');
+$router->PUT('/users/{int:id}', [UserController::class, 'update'])->name('users.update');
+$router->DELETE('/users/{int:id}', [UserController::class, 'destroy'])->name('users.destroy');
 ```
 
 ---

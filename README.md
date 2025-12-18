@@ -4,7 +4,7 @@
 [![PHP Version](https://img.shields.io/badge/php-8.2%2B-blue.svg)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-PHP 8.2+ дээр ажиллах хөнгөн, хурдан, объект-суурьтай маршрутчиллын (routing) компонент
+Хөнгөн, хурдан, объект-суурьтай маршрутчиллын (routing) компонент
 
 `codesaur/router` нь codesaur PHP Framework-ийн нэг хэсэг боловч бие даасан байдлаар ашиглах боломжтой, жижиг хэмжээтэй боловч маш уян хатан Router компонент юм.
 
@@ -20,13 +20,65 @@ PHP 8.2+ дээр ажиллах хөнгөн, хурдан, объект-суу
 
 ## Installation
 
+### Шаардлага
+
+- PHP 8.2.1 эсвэл дээш хувилбар
+- Composer
+
+### Composer ашиглан суулгах
+
 ```bash
 composer require codesaur/router
+```
+
+Эсвэл `composer.json` файлд шууд нэмэх:
+
+```json
+{
+    "require": {
+        "codesaur/router": "^5.0.0"
+    }
+}
+```
+
+Дараа нь:
+
+```bash
+composer install
+```
+
+### Autoload ашиглах
+
+Composer autoload-ийг ашиглах:
+
+```php
+require 'vendor/autoload.php';
+
+use codesaur\Router\Router;
+use codesaur\Router\Callback;
+
+$router = new Router();
+// ...
+```
+
+### Шууд ашиглах (standalone)
+
+Хэрэв Composer ашиглахгүй бол файлуудыг шууд татаж авч ашиглаж болно:
+
+```php
+require_once 'src/Router.php';
+require_once 'src/Callback.php';
+require_once 'src/RouterInterface.php';
+
+use codesaur\Router\Router;
+// ...
 ```
 
 ---
 
 ## Quick Start
+
+### Энгийн маршрут
 
 ```php
 use codesaur\Router\Router;
@@ -34,21 +86,42 @@ use codesaur\Router\Callback;
 
 $router = new Router();
 
+// GET маршрут бүртгэх
 $router->GET('/hello/{firstname}', function ($firstname) {
     echo "Hello $firstname!";
 });
+
+// Маршрут тааруулах
+$callback = $router->match('/hello/Narankhuu', 'GET');
+
+if ($callback instanceof Callback) {
+    $callable = $callback->getCallable();
+    $params = $callback->getParameters();
+    call_user_func_array($callable, $params);
+}
 ```
 
-Request:
-
+**Request:**
 ```http
 GET /hello/Narankhuu
 ```
 
-Output:
-
+**Output:**
 ```text
 Hello Narankhuu!
+```
+
+### Controller ашиглах
+
+```php
+class UserController {
+    public function show(int $id) {
+        echo "User ID: $id";
+    }
+}
+
+$router->GET('/user/{int:id}', [UserController::class, 'show'])
+    ->name('user.show');
 ```
 
 ---
@@ -101,13 +174,46 @@ $router->generate('profile', ['id' => 'abc']);
 
 ## Matching & Dispatching
 
+Орж ирсэн request-ийг боловсруулах:
+
 ```php
+// URL болон HTTP method-д тохирох маршрутыг олох
 $callback = $router->match("/insert/data", "POST");
+
+if ($callback instanceof Callback) {
+    // Callable болон параметрүүдийг авах
+    $callable = $callback->getCallable();
+    $params = $callback->getParameters();
+    
+    // Callback гүйцэтгэх
+    call_user_func_array($callable, $params);
+} else {
+    // Маршрут олдсонгүй - 404 буцаах
+    http_response_code(404);
+    echo "Page not found";
+}
+```
+
+**Бүтэн жишээ:**
+```php
+// Request-ийг боловсруулах
+$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$method = $_SERVER['REQUEST_METHOD'];
+
+$callback = $router->match($path, $method);
 
 if ($callback instanceof Callback) {
     $callable = $callback->getCallable();
     $params = $callback->getParameters();
-    call_user_func_array($callable, $params);
+    
+    if ($callable instanceof \Closure) {
+        call_user_func_array($callable, $params);
+    } else {
+        // Controller method
+        [$class, $method] = $callable;
+        $controller = new $class();
+        call_user_func_array([$controller, $method], $params);
+    }
 }
 ```
 
@@ -115,22 +221,46 @@ if ($callback instanceof Callback) {
 
 ## Example Project
 
-`example/example.php` файл нь бүх функцүүдийг нэг дор харуулна:
+`example/index.php` файл нь бүх функцүүдийг нэг дор харуулна:
 
-- GET/POST маршрут  
-- Controller класстай ажиллах  
-- Параметрийн төрөл шалгах  
-- URL generate тест  
-- Гүйцэтгэл тест (Performance Test)
-- Автомат base-path support  
+- ✅ GET/POST маршрут бүртгэх  
+- ✅ Controller класстай ажиллах  
+- ✅ Параметрийн төрөл шалгах (int, uint, float, string)  
+- ✅ URL generate тест (reverse routing)  
+- ✅ Гүйцэтгэл тест (Performance Test - 10,000 удаа)
+- ✅ Автомат base-path support
+- ✅ Монгол үсэг дэмжлэг
+
+Жишээ файлыг ажиллуулах:
+```bash
+php -S localhost:8000 -t example
+# Дараа нь browser дээр: http://localhost:8000
+```  
 
 ---
 
 ## Router Merge
 
+Модулиудын маршрутуудыг нэгтгэх:
+
 ```php
-$router->merge($moduleRouter);
+// Модулийн router үүсгэх
+$moduleRouter = new Router();
+$moduleRouter->GET('/module/users', function() {
+    echo "Module users";
+})->name('module.users');
+
+// Үндсэн router-т нэгтгэх
+$mainRouter = new Router();
+$mainRouter->merge($moduleRouter);
+
+// Одоо /module/users маршрут ажиллана
+$callback = $mainRouter->match('/module/users', 'GET');
 ```
+
+**Анхаарах зүйл:**
+- Route name-ууд мөн нэгтгэгдэнэ
+- Хэрэв ижил нэртэй route байвал эхний router-ийнх нь давуу тал болно
 
 ---
 
@@ -152,8 +282,8 @@ CI/CD workflow нь `main`, `master`, `develop` салбарууд дээр push
 
 Энэ пакетийн дэлгэрэнгүй баримт бичгүүд:
 
-- 📚 **[API.md](API.md)** - Бүх public API-ийн дэлгэрэнгүй тайлбар, method-ууд, parameter-ууд, exception-ууд (Cursor AI)
-- 🔍 **[REVIEW.md](REVIEW.md)** - Код шалгалтын тайлан, давуу талууд, сайжруулах боломжууд  (Cursor AI)
+- 📚 **[API.md](API.md)** - Бүх public API-ийн дэлгэрэнгүй тайлбар, method-ууд, parameter-ууд, exception-ууд (PHPDoc-уудаас Cursor AI ашиглан автоматаар үүсгэсэн)
+- 🔍 **[REVIEW.md](REVIEW.md)** - Код шалгалтын тайлан, давуу талууд, сайжруулах боломжууд  (Cursor AI ашиглан үүсгэсэн)
 
 ---
 
@@ -225,22 +355,28 @@ vendor/bin/phpunit --coverage-text
 
 ---
 
-## Requirements
+## 📄 Лиценз
 
-- PHP 8.2.1+  
-- Composer
+Энэ төсөл MIT лицензтэй.
 
 ---
 
-## Credits
+## 👨‍💻 Зохиогч
 
-**Narankhuu**  
+Narankhuu  
 📧 codesaur@gmail.com  
-📱 +976 99000287  
+📲 [+976 99000287](https://wa.me/97699000287)  
 🌐 https://github.com/codesaur  
 
 ---
 
-## License
+## 🤝 Хөгжүүлэлтэд хувь нэмэр оруулах
 
-MIT License
+Pull request буюу code засвар, сайжруулалтыг хэзээд нээлттэй хүлээж авна.  
+
+**Хувь нэмэр оруухаас өмнө:**
+- Тестүүдийг ажиллуулж бүх тест амжилттай байгаа эсэхийг шалгана
+- Шинэ функц нэмсэн бол шинэ тест нэмнэ
+- PHPDoc тайлбарыг шинэчлэнэ
+
+Bug report илгээхдээ системийн орчны мэдээллээ давхар бичиж өгнө үү.

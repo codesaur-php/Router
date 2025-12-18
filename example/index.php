@@ -31,10 +31,21 @@ use codesaur\Router\Router;
 
 /**
  * ExampleController - Демонстрацийн зориулалттай controller
+ *
+ * Энэ controller нь codesaur/router пакетийн бүх боломжуудыг харуулах
+ * жишээ method-уудыг агуулна.
+ *
+ * @package codesaur\Router\Example
  */
 class ExampleController
 {
-    /** Энгийн GET / маршрут */
+    /**
+     * Энгийн GET / маршрут
+     *
+     * Үндсэн хуудас - бүх маршрутуудын жагсаалтыг харуулна.
+     *
+     * @return void
+     */
     public function index()
     {
         // Script байгаа үндсэн замыг автоматаар тодорхойлох
@@ -53,7 +64,15 @@ class ExampleController
         echo "</ul>";
     }
 
-    /** Нэр угтах */
+    /**
+     * Нэр угтах
+     *
+     * Хоёр параметртэй маршрутын жишээ.
+     *
+     * @param string $firstname Нэрийн эхний хэсэг
+     * @param string|null $lastname Нэрийн сүүлийн хэсэг (сонголттой)
+     * @return void
+     */
     public function greetings(string $firstname, ?string $lastname = null)
     {
         $name = $firstname;
@@ -63,13 +82,33 @@ class ExampleController
         echo "<br/>Сайн байна уу, $name!";
     }
 
-    /** Нэг үг хэвлэх */
+    /**
+     * Нэг үг хэвлэх
+     *
+     * Нэг параметртэй маршрутын жишээ.
+     *
+     * @param string $singleword Хэвлэх үг
+     * @return void
+     */
     public function echo(string $singleword)
     {
         echo "<br/>Нэг үг: $singleword";
     }
 
-    /** Бүх төрлийн filter шалгах */
+    /**
+     * Бүх төрлийн filter шалгах
+     *
+     * Олон төрлийн параметр (string, int, uint, float) агуулсан маршрутын жишээ.
+     *
+     * @param string $singleword Энгийн string параметр
+     * @param string $firstname Энгийн string параметр
+     * @param string $lastname Энгийн string параметр
+     * @param int $a INTEGER төрлийн параметр (сөрөг тоо зөвшөөрнө)
+     * @param int $b UNSIGNED INTEGER төрлийн параметр (зөвхөн эерэг)
+     * @param float $number FLOAT төрлийн параметр
+     * @param string $word Энгийн string параметр
+     * @return void
+     */
     public function test(
         string $singleword,
         string $firstname,
@@ -82,7 +121,13 @@ class ExampleController
         var_dump($singleword, $firstname, $lastname, $a, $b, $number, $word);
     }
 
-    /** POST request хүлээн авах */
+    /**
+     * POST request хүлээн авах
+     *
+     * POST method-тай маршрутын жишээ. $_POST массив-аас өгөгдөл уншина.
+     *
+     * @return void
+     */
     public function post()
     {
         if (empty($_POST['firstname'])) {
@@ -97,7 +142,14 @@ class ExampleController
         echo "<br/>Сайн уу, $name!";
     }
 
-    /** Float параметртэй тест */
+    /**
+     * Float параметртэй тест
+     *
+     * FLOAT төрлийн параметртэй маршрутын жишээ.
+     *
+     * @param float $number Бутархай тоо
+     * @return void
+     */
     public function number(float $number)
     {
         \var_dump($number);
@@ -106,43 +158,49 @@ class ExampleController
 
 /* -----------------------------------------------------------------------------
  *  ROUTES - Маршрут бүртгэх хэсэг
+ *
+ *  Доорх маршрутууд нь codesaur/router пакетийн бүх боломжуудыг харуулна:
+ *  - GET, POST method-ууд
+ *  - Динамик параметрүүд ({int:id}, {uint:page}, {float:price}, {slug})
+ *  - Нэртэй маршрутууд (named routes)
+ *  - Controller болон Closure callback-ууд
  * ---------------------------------------------------------------------------*/
 
 $router = new Router();
 
-/* Энгийн GET / */
+/* Энгийн GET / маршрут - үндсэн хуудас */
 $router->GET('/', [ExampleController::class, 'index']);
 
-/* POST /сайнуу/{firstname} */
+/* POST /сайнуу/{firstname} - Монгол үсэг дэмжих жишээ */
 $router->POST('/сайнуу/{firstname}', [ExampleController::class, 'greetings']);
 
-/* GET /echo/{singleword} */
+/* GET /echo/{singleword} - Нэг параметртэй, нэртэй маршрут */
 $router->GET('/echo/{singleword}', [ExampleController::class, 'echo'])
     ->name('echo');
 
-/* GET /hello/{firstname}/{lastname} */
+/* GET /hello/{firstname}/{lastname} - Хоёр параметртэй, нэртэй маршрут */
 $router->GET('/hello/{firstname}/{lastname}', [ExampleController::class, 'greetings'])
     ->name('hello');
 
-/* Бүх төрлийн regex filter-тэй маршрут */
+/* Бүх төрлийн regex filter-тэй маршрут - int, uint, float, string */
 $router->GET('/test-all-filters/{singleword}/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{word}',
     [ExampleController::class, 'test']
 )->name('test-filters');
 
-/* POST form test */
+/* POST form test - POST method-тай маршрут */
 $router->POST('/hello', [ExampleController::class, 'post']);
 
-/* Float parameter */
+/* Float parameter - FLOAT төрлийн параметртэй маршрут */
 $router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])
     ->name('float');
 
-/* Closure - нийлбэр */
+/* Closure - нийлбэр - Closure callback ашиглах жишээ */
 $router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
     $sum = $a + $b;
     echo "<br/>$a + $b = $sum";
 })->name('sum');
 
-/* URL generate тест */
+/* URL generate тест - Нэртэй маршрутуудын URL үүсгэх жишээ */
 $router->GET('/generate', function () use ($router)
 {
     echo "<h3>URL үүсгэх тест (generate)</h3>";
@@ -174,6 +232,11 @@ $router->GET('/generate', function () use ($router)
 
 /* -----------------------------------------------------------------------------
  *  ГҮЙЦЭТГЭЛ ШАЛГАХ - 10,000 generate & match
+ *
+ *  Энэ маршрут нь router-ийн гүйцэтгэлийг шалгана:
+ *  - 10,000 удаа URL generate хийх
+ *  - 10,000 удаа маршрут match хийх
+ *  - Хугацаа хэмжих
  * ---------------------------------------------------------------------------*/
 $router->GET('/speed/test', function () use ($router)
 {
@@ -209,9 +272,14 @@ $router->GET('/speed/test', function () use ($router)
 
 /* -----------------------------------------------------------------------------
  *  REQUEST → MATCH → DISPATCH
+ *
+ *  Энэ хэсэг нь орж ирсэн HTTP request-ийг боловсруулна:
+ *  1. URL-ийг цэвэрлэх (query string, trailing slash)
+ *  2. Маршрут тааруулах (match)
+ *  3. Callback гүйцэтгэх (dispatch)
  * ---------------------------------------------------------------------------*/
 
-/* URL-ийг цэвэрлэх */
+/* URL-ийг цэвэрлэх - query string болон давхардсан slash-уудыг арилгах */
 $request_uri = \preg_replace('/\/+/', '\\1/', $_SERVER['REQUEST_URI']);
 if (($pos = \strpos($request_uri, '?')) !== false) {
     $request_uri = \substr($request_uri, 0, $pos);
@@ -224,7 +292,7 @@ if (empty($target_path)) {
     $target_path = '/';
 }
 
-/* Маршрут тааруулах */
+/* Маршрут тааруулах - орж ирсэн path болон HTTP method-д тохирох маршрутыг олох */
 $callback = $router->match($target_path, $_SERVER['REQUEST_METHOD']);
 
 if (!$callback instanceof Callback) {
@@ -232,7 +300,7 @@ if (!$callback instanceof Callback) {
     die("Тохирох маршрут олдсонгүй: [" . \rawurldecode($target_path) . "]");
 }
 
-/* Callback гүйцэтгэх */
+/* Callback гүйцэтгэх - Closure эсвэл Controller method дуудах */
 $callable = $callback->getCallable();
 $parameters = $callback->getParameters();
 

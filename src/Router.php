@@ -49,7 +49,7 @@ class Router implements RouterInterface
      *
      * Жишээ: /news/{int:id}/{slug}
      *
-     * @var string
+     * @const string
      */
     const FILTERS_REGEX = '/\{(int:|uint:|float:)?(\w+)}/';
 
@@ -57,7 +57,7 @@ class Router implements RouterInterface
      * INTEGER төрлийн параметрийн regex pattern.
      * Сөрөг болон эерэг бүхэл тоонуудыг зөвшөөрнө.
      *
-     * @var string
+     * @const string
      */
     const INT_REGEX = '(-?\d+)';
 
@@ -65,7 +65,7 @@ class Router implements RouterInterface
      * UNSIGNED INTEGER төрлийн параметрийн regex pattern.
      * Зөвхөн эерэг бүхэл тоонуудыг зөвшөөрнө (0 ба түүнээс дээш).
      *
-     * @var string
+     * @const string
      */
     const UNSIGNED_INT_REGEX = '(\d+)';
 
@@ -73,7 +73,7 @@ class Router implements RouterInterface
      * FLOAT төрлийн параметрийн regex pattern.
      * Сөрөг болон эерэг бутархай тоонуудыг зөвшөөрнө.
      *
-     * @var string
+     * @const string
      */
     const FLOAT_REGEX = '(-?\d+|-?\d*\.\d+)';
 
@@ -81,7 +81,7 @@ class Router implements RouterInterface
      * DEFAULT string төрлийн параметрийн regex pattern.
      * URL-safe тэмдэгтүүд болон зарим тусгай тэмдэгтүүдийг зөвшөөрнө.
      *
-     * @var string
+     * @const string
      */
     const DEFAULT_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
     
@@ -99,7 +99,7 @@ class Router implements RouterInterface
      * @param string $method HTTP method нэр (GET, POST, PUT, DELETE, PATCH гэх мэт)
      * @param array<mixed> $properties [0] => route pattern (string),
      *                                  [1] => callback (callable|array)
-     * @return $this Method chaining-д зориулж router объектыг буцаана
+     * @return static Method chaining-д зориулж router объектыг буцаана
      *
      * @throws \InvalidArgumentException Буруу маршрут тохиргоо үед
      *                                   (pattern эсвэл callback хоосон/буруу байвал)
@@ -165,12 +165,12 @@ class Router implements RouterInterface
         foreach ($this->routes as $pattern => $route) {
             foreach ($route as $methods => $callback) {
                 
-                // Method check: "GET_POST" гэх мэт олон method байж болно.
+                // Method check: "GET_POST" гэх мэт олон method-ууд нэг route-д байж болно
                 if (!\in_array($method, \explode('_', $methods))) {
                     continue;
                 }
                 
-                // Pattern 100% ижил бол параметргүй маршрут
+                // Pattern 100% ижил бол параметргүй маршрут - шууд буцаана
                 if ($path == $pattern) {
                     return $callback;
                 }
@@ -178,12 +178,12 @@ class Router implements RouterInterface
                 $filters = [];
                 $paramMatches = [];
                 
-                // Параметрүүдтэй эсэхийг шалгана
+                // Параметрүүдтэй эсэхийг шалгана - хэрэв параметр байхгүй бол дараагийн route руу шилжинэ
                 if (!\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
                     continue;
                 }
 
-                // Filterүүдийг тодорхойлох
+                // Filterүүдийг тодорхойлох - параметрийн төрөл бүрт тохирох regex pattern оноох
                 foreach ($paramMatches[2] as $index => $param) {
                     switch ($paramMatches[1][$index]) {
                         case 'int:':   $filters[$param] = self::INT_REGEX; break;
@@ -193,7 +193,7 @@ class Router implements RouterInterface
                     }
                 }
 
-                // Regex таарах эсэх
+                // Regex таарах эсэх - pattern-ийг regex болгож, path-тай тааруулах
                 $matches = [];
                 $regex = $this->getPatternRegex($pattern, $filters);
 
@@ -202,21 +202,25 @@ class Router implements RouterInterface
                     continue;
                 }
                 
-                // Параметрүүдийг parse хийе
+                // Параметрүүдийг parse хийе - төрөл бүрт тохирох утга болгон хөрвүүлэх
                 $params = [];
                 foreach ($paramMatches[2] as $key => $name) {
                     if (isset($matches[$key + 1])) {
                         $filter = $filters[$name];
                         if ($filter == self::DEFAULT_REGEX) {
+                            // String параметр - URL decode хийх
                             $params[$name] = \rawurldecode($matches[$key + 1]);
                         } elseif ($filter == self::FLOAT_REGEX) {
+                            // Float параметр - float болгон хөрвүүлэх
                             $params[$name] = (float) $matches[$key + 1];
                         } else {
+                            // Integer параметр (int эсвэл uint) - int болгон хөрвүүлэх
                             $params[$name] = (int) $matches[$key + 1];
                         }
                     }
                 }
 
+                // Параметрүүдийг Callback объектод set хийж, буцаана
                 $callback->setParameters($params);
                 
                 return $callback;
@@ -238,10 +242,11 @@ class Router implements RouterInterface
      */
     public function merge(RouterInterface $router)
     {
+        // Маршрутуудыг нэгтгэнэ
         $this->routes = \array_merge($this->routes, $router->getRoutes());
         
         // Хэрэв нэгтгэж буй router нь Router классын instance бол
-        // name_patterns-ийг нэгтгэнэ
+        // name_patterns-ийг мөн нэгтгэнэ (ижил нэртэй route байвал эхнийх нь давуу тал болно)
         if ($router instanceof Router && !empty($router->name_patterns)) {
             $this->name_patterns += $router->name_patterns;
         }
@@ -280,6 +285,7 @@ class Router implements RouterInterface
             return $pattern;
         }
         
+        // Pattern-аас бүх параметрүүдийг олох
         $paramMatches = [];
         if (\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
 
@@ -287,7 +293,7 @@ class Router implements RouterInterface
                 if (isset($params[$key])) {
                     $filter = $paramMatches[1][$index];
 
-                    // Төрлийг шалгах
+                    // Параметрийн төрлийг шалгах - буруу бол exception шиднэ
                     switch ($filter) {
                         case 'float:':
                             if (!\is_numeric($params[$key])) {
@@ -306,6 +312,7 @@ class Router implements RouterInterface
                             break;
 
                         case 'uint:':
+                            // Unsigned integer - зөвхөн 0 ба түүнээс дээш утга зөвшөөрнө
                             $is_uint = \filter_var($params[$key], \FILTER_VALIDATE_INT, [
                                 'options' => ['min_range' => 0]
                             ]);
@@ -317,7 +324,7 @@ class Router implements RouterInterface
                             break;
                     }
 
-                    // Pattern-д параметр суулгах
+                    // Pattern-д параметр суулгах - {int:id} → бодит утга
                     $pattern = \preg_replace(
                         '/\{' . $filter . '(\w+)\}/',
                         $params[$key],
@@ -357,20 +364,20 @@ class Router implements RouterInterface
     {
         $parts = \explode('/', $pattern);
 
-        // Текст хэсгийг URL encode болгоно
+        // Текст хэсгийг URL encode болгоно - URL-д аюулгүй байхын тулд
         foreach ($parts as &$part) {
             if ($part != '' && $part[0] != '{') {
                 $part = \rawurlencode($part);
             }
         }
 
-        // {param} -ийг өөрийн regex-р солих
+        // {param} -ийг тохирох regex pattern-аар солих
         return \preg_replace_callback(
             self::FILTERS_REGEX,
             function ($matches) use ($filters) {
                 return isset($matches[2], $filters[$matches[2]])
                     ? $filters[$matches[2]]
-                    : '(\w+)';
+                    : '(\w+)'; // Default fallback regex
             },
             \implode('/', $parts)
         );

@@ -20,7 +20,7 @@ class Callback
      * Энэ нь function, anonymous function, static method буюу array callable
      * аль нь ч байж болно.
      *
-     * @var callable
+     * @var callable|array{class-string, string}
      */
     private $_callable;
     
@@ -34,8 +34,8 @@ class Callback
     /**
      * Callback constructor.
      *
-     * @param callable $callable Гүйцэтгэх callable объект
-     *                           (function, Closure, array [Class, 'method'], гэх мэт)
+     * @param callable|array{class-string, string} $callable Гүйцэтгэх callable объект
+     *                                                       (function, Closure, array [Class, 'method'], гэх мэт)
      */
     public function __construct($callable)
     {
@@ -45,7 +45,7 @@ class Callback
     /**
      * Бүртгэлтэй callable-г буцаана.
      *
-     * @return callable Гүйцэтгэх callable объект
+     * @return callable|array{class-string, string} Гүйцэтгэх callable объект
      */
     public function getCallable()
     {
