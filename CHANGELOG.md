@@ -4,7 +4,7 @@
 
 Энэхүү файл нь `codesaur/router` пакетийн бүх хувилбаруудын өөрчлөлтийг агуулна.
 
-Формат нь [Keep a Changelog](https://keepachangelog.com/mn/1.0.0/) стандартыг дагана, мөн энэ төсөл [Semantic Versioning](https://semver.org/lang/mn/) стандартыг дагана.
+Формат нь [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) стандартыг дагана, мөн энэ төсөл [Semantic Versioning](https://semver.org/spec/v2.0.0.html) стандартыг дагана.
 
 ---
 
