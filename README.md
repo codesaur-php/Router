@@ -4,7 +4,7 @@
 [![PHP Version](https://img.shields.io/badge/php-%5E8.2.1-777BB4.svg?logo=php)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**Хэл:** [🇲🇳 Монгол](README.md) | [🇬🇧 English](README.EN.md)
+**Хэл:** Монгол | [English](README.EN.md)
 
 Хөнгөн, хурдан, объект-суурьтай маршрутчиллын (routing) компонент
 
