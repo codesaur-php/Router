@@ -1,5 +1,7 @@
 # API Documentation
 
+**Хэл:** [🇲🇳 Монгол](API.md) | [🇬🇧 English](API.EN.md)
+
 Энэхүү баримт бичиг нь `codesaur/router` пакетийн бүх public API-г дэлгэрэнгүй тайлбарлана.
 
 ---

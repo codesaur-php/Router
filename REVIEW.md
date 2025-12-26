@@ -1,5 +1,7 @@
 # Code Review
 
+**Хэл:** [🇲🇳 Монгол](REVIEW.md) | [🇬🇧 English](REVIEW.EN.md)
+
 Энэхүү баримт бичиг нь `codesaur/router` пакетийн код шалгалтын тайлан юм.
 
 ---
