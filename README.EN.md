@@ -4,7 +4,7 @@
 [![PHP Version](https://img.shields.io/badge/php-%5E8.2.1-777BB4.svg?logo=php)](https://www.php.net/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**Language:** [🇲🇳 Монгол](README.md) | [🇬🇧 English](README.EN.md)
+**Language:** [Монгол](README.md) | English
 
 Lightweight, fast, object-oriented routing component
 
@@ -284,9 +284,9 @@ CI/CD workflow runs automatically on push or pull request to `main`, `master`, `
 
 Detailed documentation for this package:
 
-- 📚 **[API.EN.md](API.EN.md)** ([🇲🇳 Монгол](API.md)) - Detailed documentation of all public APIs, methods, parameters, exceptions (auto-generated from PHPDoc using Cursor AI)
-- 🔍 **[REVIEW.EN.md](REVIEW.EN.md)** ([🇲🇳 Монгол](REVIEW.md)) - Code review report, strengths, improvement opportunities (generated using Cursor AI)
-- 📋 **[CHANGELOG.EN.md](CHANGELOG.EN.md)** ([🇲🇳 Монгол](CHANGELOG.md)) - History of all package version changes
+- 📚 **[API](API.EN.md)** - Detailed documentation of all public APIs, methods, parameters, exceptions (auto-generated from PHPDoc using Cursor AI)
+- 🔍 **[REVIEW](REVIEW.EN.md)** - Code review report, strengths, improvement opportunities (generated using Cursor AI)
+- 📋 **[CHANGELOG](CHANGELOG.EN.md)** - History of all package version changes
 
 ---
 

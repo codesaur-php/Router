@@ -1,6 +1,6 @@
 # API Documentation
 
-**Language:** [🇲🇳 Монгол](API.md) | [🇬🇧 English](API.EN.md)
+**Language:** [Монгол](API.md) | English
 
 This documentation provides detailed information about all public APIs of the `codesaur/router` package.
 
