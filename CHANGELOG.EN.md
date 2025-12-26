@@ -8,7 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [5.0.2] - 2025-12-26
+
+[Compare v5.0.1...v5.0.2](https://github.com/codesaur-php/Router/compare/v5.0.1...v5.0.2)
+
+### 🔧 Improved
+
+- **CHANGELOG links** - Keep a Changelog standard links updated
+- **Version comparison** - GitHub compare links added to each version
+
+---
+
 ## [5.0.1] - 2025-12-26
+
+[Compare v5.0.0...v5.0.1](https://github.com/codesaur-php/Router/compare/v5.0.0...v5.0.1)
 
 ### ✨ Added
 
@@ -26,6 +39,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ---
 
 ## [5.0.0] - 2025-12-17
+
+[Compare v4.0.0...v5.0.0](https://github.com/codesaur-php/Router/compare/v4.0...v5.0.0)
 
 ### ✨ Added
 
