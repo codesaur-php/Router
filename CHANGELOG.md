@@ -1,87 +1,95 @@
-# Өөрчлөлтийн түүх
+# Changelog
 
-**Хэл:** Монгол | [English](CHANGELOG.EN.md)
+This file contains all changes for all versions of the `codesaur/router` package.
 
-Энэхүү файл нь `codesaur/router` пакетийн бүх хувилбаруудын өөрчлөлтийг агуулна.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Формат нь [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) стандартыг дагана, мөн энэ төсөл [Semantic Versioning](https://semver.org/spec/v2.0.0.html) стандартыг дагана.
+---
+
+## [5.0.3] - 2026-01-05
+
+### ✨ Added
+
+- **Composer test scripts** - Added `composer test` and `composer test:coverage` commands to composer.json
+  - `composer test` - Run all PHPUnit tests
+  - `composer test:coverage` - Run tests with code coverage
+- **Contributing guide** - `.github/CONTRIBUTING.md` and `.github/SECURITY.md` added
+
+### 🔧 Improved
+
+- **README.md refactoring**
+  - Updated project title and description
+  - Updated core classes documentation
+  - Updated examples to show routing usage
+  - Updated installation and quick start guide
+- **Documentation improvements**
+  - `docs/en/README.md` - Testing section simplified and streamlined
+  - `docs/mn/README.md` - Testing section simplified and streamlined
+  - Fixed documentation links (api.md, review.md, CHANGELOG.md)
+  - Updated ecosystem references
 
 ---
 
 ## [5.0.2] - 2025-12-26
 
-### 🔧 Сайжруулсан
+### 🔧 Improved
 
-- **CHANGELOG стандарт** - Keep a Changelog стандартын link-ууд шинэчлэгдсэн (v1.1.0)
-- **Хувилбаруудын харьцуулалт** - Хувилбар бүрт GitHub compare link reference нэмэгдсэн
-- **Баримт бичгийн refactoring** - Бүх *.md баримт бичгүүд сайжруулагдсан
-  - README.md - Структур, жишээ код, заавар сайжруулагдсан
-  - API.md - API тайлбар илүү дэлгэрэнгүй болсон
-  - REVIEW.md - Код шалгалтын тайлан сайжруулагдсан
-  - CHANGELOG.md - Хувилбаруудын харьцуулалт link-ууд нэмэгдсэн
+- **CHANGELOG standard** - Keep a Changelog standard links updated (v1.1.0)
+- **Version comparison** - GitHub compare link references added to each version
+- **Documentation refactoring** - All *.md documentation files improved with custom style
+  - README.md - Structure, example code, and guides improved
+  - API.md - API documentation made more detailed
+  - REVIEW.md - Code review report improved
+  - CHANGELOG.md - Version comparison links added
 
 ---
 
 ## [5.0.1] - 2025-12-26
 
-### ✨ Нэмэгдсэн
+### ✨ Added
 
-- **Англи хэл дээрх баримт бичиг** - Бүх баримт бичгүүдийн Англи хувилбар
-  - README.EN.md - Англи хэл дээрх README
-  - API.EN.md - Англи хэл дээрх API баримт бичиг
-  - REVIEW.EN.md - Англи хэл дээрх код шалгалтын тайлан
-  - CHANGELOG.EN.md - Англи хэл дээрх өөрчлөлтийн түүх
+- **English documentation** - English versions of all documentation files
+  - README.EN.md - English README
+  - API.EN.md - English API documentation
+  - REVIEW.EN.md - English code review report
+  - CHANGELOG.EN.md - English changelog
 
-### 🔧 Сайжруулсан
+### 🔧 Improved
 
-- **Хоёр хэлний дэмжлэг** - Бүх баримт бичгүүдэд хоёр хувилбарыг хооронд нь холбох link нэмэгдсэн
-- **Хэл солих** - Хэрэглэгчид Монгол болон Англи хувилбаруудыг хялбар солих боломжтой
+- **Bilingual support** - Links between two language versions added to all documentation files
+- **Language switching** - Users can easily switch between Mongolian and English versions
 
 ---
 
 ## [5.0.0] - 2025-12-17
 
-### ✨ Нэмэгдсэн
+### ✨ Added
 
-- **CI/CD workflow** - GitHub Actions ашиглан автоматаар тест хийх
-  - PHP 8.2, 8.3, 8.4 хувилбарууд дээр тест
-  - Ubuntu болон Windows дээр тест
-  - Code coverage хэмжих
-- **API баримт бичиг** - API.md файл (PHPDoc-уудаас автоматаар үүсгэсэн)
-- **Код шалгалтын тайлан** - REVIEW.md файл
-- **PHPDoc сайжруулалт**
-  - Бүх constant-ууд дээр `@const` annotation
-  - Method return type-ууд илүү тодорхой (`@return static`)
-  - Callable type-ууд илүү нарийвчилсан
-- **Example файл сайжруулалт**
-  - Бүх method-ууд дээр PHPDoc нэмэгдсэн
-  - Comment-ууд илүү дэлгэрэнгүй болсон
-- **README.md сайжруулалт**
-  - Installation заавар дэлгэрэнгүй болсон
-  - Илүү олон жишээ код нэмэгдсэн
-  - Router merge, Matching & Dispatching хэсгүүд дэлгэрэнгүй болсон
+- **CI/CD workflow** - Automated testing using GitHub Actions
+  - Tests on PHP 8.2, 8.3, 8.4 versions
+  - Tests on Ubuntu and Windows
+  - Code coverage measurement
+- **API documentation** - API.md file (auto-generated from PHPDoc)
+- **Code review report** - REVIEW.md file
+- **PHPDoc improvements**
+  - `@const` annotation on all constants
+  - Method return types more specific (`@return static`)
+  - Callable types more detailed
+- **Example file improvements**
+  - PHPDoc added to all methods
+  - Comments made more detailed
+- **README.md improvements**
+  - Installation guide made more detailed
+  - More example code added
+  - Router merge, Matching & Dispatching sections made more detailed
 
-### 🔧 Сайжруулсан
+### 🔧 Improved
 
-- **PHPDoc стандарт** - PSR-5 стандартад бүрэн нийцсэн
-- **Type safety** - Callable type-ууд илүү нарийвчилсан
-- **Баримт бичиг** - Бүх баримт бичгүүд дэлгэрэнгүй, ойлгомжтой болсон
+- **PHPDoc standard** - Fully compliant with PSR-5 standard
+- **Type safety** - Callable types made more specific
+- **Documentation** - All documentation made more detailed and clear
 
-### 📝 Баримт бичиг
-
-- README.md - Илүү олон жишээ, дэлгэрэнгүй заавар
-- API.md - Бүх public API-ийн дэлгэрэнгүй тайлбар
-- REVIEW.md - Код шалгалтын тайлан
-
-## Холбоосууд
-
-- [GitHub Repository](https://github.com/codesaur-php/Router)
-- [API Documentation](API.md)
-- [Code Review](REVIEW.md)
-- [README](README.md)
-
----
-
+[5.0.3]: https://github.com/codesaur-php/Router/compare/v5.0.2...v5.0.3
 [5.0.2]: https://github.com/codesaur-php/Router/compare/v5.0.1...v5.0.2
 [5.0.1]: https://github.com/codesaur-php/Router/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/codesaur-php/Router/compare/v4.0...v5.0.0

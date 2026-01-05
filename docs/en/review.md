@@ -1,7 +1,5 @@
 # Code Review
 
-**Language:** [Монгол](REVIEW.md) | English
-
 This document is a code review report for the `codesaur/router` package.
 
 ---

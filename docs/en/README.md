@@ -1,14 +1,8 @@
 # 🦖 codesaur/router  
 
-[![CI](https://github.com/codesaur-php/Router/actions/workflows/ci.yml/badge.svg)](https://github.com/codesaur-php/Router/actions/workflows/ci.yml)
-[![PHP Version](https://img.shields.io/badge/php-%5E8.2.1-777BB4.svg?logo=php)](https://www.php.net/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-
-**Language:** [Монгол](README.md) | English
-
 Lightweight, fast, object-oriented routing component
 
-`codesaur/router` is part of the codesaur PHP Framework but can be used independently as a small yet very flexible Router component.
+`codesaur/router` is part of the **codesaur ecosystem** but can be used independently as a small yet very flexible Router component.
 
 **Features:**
 - ⚡ Fast: dynamic parameter matching + regex filtering 
@@ -284,72 +278,42 @@ CI/CD workflow runs automatically on push or pull request to `main`, `master`, `
 
 Detailed documentation for this package:
 
-- 📚 **[API](API.EN.md)** - Detailed documentation of all public APIs, methods, parameters, exceptions (auto-generated from PHPDoc using Cursor AI)
-- 🔍 **[REVIEW](REVIEW.EN.md)** - Code review report, strengths, improvement opportunities (generated using Cursor AI)
-- 📋 **[CHANGELOG](CHANGELOG.EN.md)** - History of all package version changes
+- 📚 **[API](api.md)** - Detailed documentation of all public APIs, methods, parameters, exceptions (auto-generated from PHPDoc using Cursor AI)
+- 🔍 **[REVIEW](review.md)** - Code review report, strengths, improvement opportunities (generated using Cursor AI)
+- 📋 **[CHANGELOG](../../CHANGELOG.md)** - History of all package version changes
 
 ---
 
-## Testing
+## Running Tests
 
-This project is fully tested using PHPUnit.
+This project includes unit tests and integration tests using PHPUnit.
 
-### Running Tests
-
-First, install dependencies:
+### Install Dependencies
 
 ```bash
 composer install
 ```
 
-Then run tests:
+### Run Tests
 
-**On Windows:**
-```cmd
-vendor\bin\phpunit.bat
-```
+#### Using Composer Scripts
 
-**On Linux/Mac:**
 ```bash
-vendor/bin/phpunit
+composer test              # Run all tests
+composer test:coverage     # Run tests with coverage
 ```
 
-Or with coverage:
+#### Using PHPUnit Directly
 
-**Windows:**
-```cmd
-vendor\bin\phpunit.bat --coverage-text
-```
-
-**Linux/Mac:**
 ```bash
-vendor/bin/phpunit --coverage-text
+vendor/bin/phpunit                                    # Run all tests
+vendor/bin/phpunit tests/RouterTest.php              # Run specific test file
+vendor/bin/phpunit tests/CallbackTest.php            # Run callback test
+vendor/bin/phpunit --coverage-text                   # View test coverage
+vendor/bin/phpunit --filter testMatch tests/RouterTest.php  # Run specific method
 ```
 
-### Test Structure
-
-Tests are divided into the following sections:
-
-- **RouterTest.php** - Router class tests:
-  - Route registration (GET, POST, PUT, DELETE)
-  - Named routes
-  - Route matching - with all parameter types
-  - URL generation (generate)
-  - Router merging (merge)
-  - Exception handling
-  - Edge cases (trailing slashes, URL encoding, Unicode characters)
-
-- **CallbackTest.php** - Callback class tests:
-  - Creating callbacks (Closure, function, array)
-  - Setting/getting parameters
-  - Various data types
-
-### Test Configuration
-
-Test configuration is in `phpunit.xml`. This file:
-- Defines test suite
-- Contains coverage configuration
-- Configures autoload
+**Windows users:** Replace `vendor/bin/phpunit` with `vendor\bin\phpunit.bat`
 
 ---
 
@@ -362,19 +326,4 @@ This project is licensed under MIT License.
 ## 👨‍💻 Author
 
 Narankhuu  
-📧 codesaur@gmail.com  
-📲 [+976 99000287](https://wa.me/97699000287)  
-🌐 https://github.com/codesaur  
-
----
-
-## 🤝 Contributing
-
-Pull requests or code fixes and improvements are always welcome.  
-
-**Before contributing:**
-- Run tests to ensure all tests pass
-- Add new tests if you add new features
-- Update PHPDoc comments
-
-When reporting bugs, please include your system environment information.
+https://github.com/codesaur  
