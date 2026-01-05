@@ -63,6 +63,7 @@ Use clear and descriptive commit messages, for example:
 - `fix: resolve route matching issue`
 - `feat: add route parameter validation`
 - `docs: update README examples`
+- Update `CHANGELOG.md` for notable changes
 
 ---
 
