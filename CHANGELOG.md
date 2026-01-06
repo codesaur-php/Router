@@ -6,7 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [5.0.4] - 2026-01-06
+[5.0.4]: https://github.com/codesaur-php/Router/compare/v5.0.3...v5.0.4
+
+### Added
+- ✅ Added initial release (v1.0) information to changelog
+  
+### Fixed
+- ✅ Fixed small documentation errors and inconsistencies
+
+---
+
 ## [5.0.3] - 2026-01-05
+[5.0.3]: https://github.com/codesaur-php/Router/compare/v5.0.2...v5.0.3
 
 ### ✨ Added
 
@@ -31,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ---
 
 ## [5.0.2] - 2025-12-26
+[5.0.2]: https://github.com/codesaur-php/Router/compare/v5.0.1...v5.0.2
 
 ### 🔧 Improved
 
@@ -45,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ---
 
 ## [5.0.1] - 2025-12-26
+[5.0.1]: https://github.com/codesaur-php/Router/compare/v5.0.0...v5.0.1
 
 ### ✨ Added
 
@@ -62,6 +76,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ---
 
 ## [5.0.0] - 2025-12-17
+[5.0.0]: https://github.com/codesaur-php/Router/compare/v1.0...v5.0.0
 
 ### ✨ Added
 
@@ -89,7 +104,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Type safety** - Callable types made more specific
 - **Documentation** - All documentation made more detailed and clear
 
-[5.0.3]: https://github.com/codesaur-php/Router/compare/v5.0.2...v5.0.3
-[5.0.2]: https://github.com/codesaur-php/Router/compare/v5.0.1...v5.0.2
-[5.0.1]: https://github.com/codesaur-php/Router/compare/v5.0.0...v5.0.1
-[5.0.0]: https://github.com/codesaur-php/Router/compare/v4.0...v5.0.0
+---
+
+## [1.0] - 2021-03-02
+[1.0]: https://github.com/codesaur-php/Router/releases/tag/v1.0
+
+### Released
+- Initial release
