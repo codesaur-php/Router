@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### 📋 Technical Details
 
 - `{utf8:}` extends `DEFAULT_REGEX` with `\x80-\xFF` byte range and space character
-- **Zero impact** on existing `{string}`, `{int:}`, `{uint:}`, `{float:}` parameters — no code or performance changes
+- **Zero impact** on existing `{string}`, `{int:}`, `{uint:}`, `{float:}` parameters - no code or performance changes
 - Added `utf8:` to `FILTERS_REGEX`: `/\{(int:|uint:|float:|utf8:)?(\w+)}/`
 
 ---
