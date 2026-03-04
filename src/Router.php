@@ -51,7 +51,7 @@ class Router implements RouterInterface
      *
      * @const string
      */
-    const FILTERS_REGEX = '/\{(int:|uint:|float:)?(\w+)}/';
+    const FILTERS_REGEX = '/\{(int:|uint:|float:|utf8:)?(\w+)}/';
 
     /**
      * INTEGER төрлийн параметрийн regex pattern.
@@ -84,6 +84,15 @@ class Router implements RouterInterface
      * @const string
      */
     const DEFAULT_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)';
+
+    /**
+     * UTF-8 string төрлийн параметрийн regex pattern.
+     * DEFAULT_REGEX дээр нэмэлтээр multibyte UTF-8 тэмдэгтүүд (Кирилл, Монгол гэх мэт)
+     * болон хоосон зайг зөвшөөрнө. Percent-encoded болон raw UTF-8 аль алиныг нь таарна.
+     *
+     * @const string
+     */
+    const UTF8_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)';
     
     /**
      * Магик метод - GET, POST, PUT, DELETE гэх мэт маршрут бүртгэнэ.
@@ -189,6 +198,7 @@ class Router implements RouterInterface
                         case 'int:':   $filters[$param] = self::INT_REGEX; break;
                         case 'uint:':  $filters[$param] = self::UNSIGNED_INT_REGEX; break;
                         case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
+                        case 'utf8:':  $filters[$param] = self::UTF8_REGEX; break;
                         default:       $filters[$param] = self::DEFAULT_REGEX;
                     }
                 }
@@ -201,13 +211,15 @@ class Router implements RouterInterface
                     || \count($paramMatches[2]) != (\count($matches) - 1)) {
                     continue;
                 }
-                
+
                 // Параметрүүдийг parse хийе - төрөл бүрт тохирох утга болгон хөрвүүлэх
                 $params = [];
                 foreach ($paramMatches[2] as $key => $name) {
                     if (isset($matches[$key + 1])) {
                         $filter = $filters[$name];
-                        if ($filter == self::DEFAULT_REGEX) {
+                        if ($filter == self::DEFAULT_REGEX
+                            || $filter == self::UTF8_REGEX
+                        ) {
                             // String параметр - URL decode хийх
                             $params[$name] = \rawurldecode($matches[$key + 1]);
                         } elseif ($filter == self::FLOAT_REGEX) {

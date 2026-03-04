@@ -134,9 +134,9 @@ codesaur Framework-ийн хөнгөн жинтэй маршрутчилал (ro
 
 Параметертэй маршрутыг илрүүлэх regex pattern.
 
-**Value:** `'/\{(int:|uint:|float:)?(\w+)}/'`
+**Value:** `'/\{(int:|uint:|float:|utf8:)?(\w+)}/'`
 
-Энэ regex нь `{param}`, `{int:id}`, `{uint:page}`, `{float:price}` гэх мэт бүх төрлийн параметрийг илрүүлнэ.
+Энэ regex нь `{param}`, `{int:id}`, `{uint:page}`, `{float:price}`, `{utf8:text}` гэх мэт бүх төрлийн параметрийг илрүүлнэ.
 
 **Example:** `/news/{int:id}/{slug}`
 
@@ -171,6 +171,16 @@ FLOAT төрлийн параметрийн regex pattern. Сөрөг болон
 DEFAULT string төрлийн параметрийн regex pattern. URL-safe тэмдэгтүүд болон зарим тусгай тэмдэгтүүдийг зөвшөөрнө.
 
 **Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)'`
+
+---
+
+#### `UTF8_REGEX`
+
+UTF-8 string төрлийн параметрийн regex pattern. `DEFAULT_REGEX` дээр нэмэлтээр multibyte UTF-8 байт хүрээ (`\x80-\xFF`) болон хоосон зай зөвшөөрнө. Percent-encoded болон raw UTF-8 тэмдэгтүүд (Кирилл, Хятад, Араб гэх мэт) аль алиныг нь тааруулна.
+
+**Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)'`
+
+Бүх PHP серверүүд дээр ажиллана (Apache, Nginx, LiteSpeed, IIS, Caddy, PHP built-in).
 
 ---
 
@@ -426,6 +436,7 @@ Router нь дараах төрлийн параметрүүдийг дэмжи�
 | Unsigned Integer | `{uint:page}` | `/users/{uint:page}` | Зөвхөн эерэг бүхэл тоо (0 ба түүнээс дээш) | `(\d+)` |
 | Float | `{float:num}` | `/price/{float:num}` | 1.4, -2.56 гэх мэт | `(-?\d+|-?\d*\.\d+)` |
 | String (default) | `{slug}` | `/tag/{slug}` | A-z0-9 болон URL-safe тэмдэгтүүд | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@-]+)` |
+| UTF-8 String | `{utf8:text}` | `/search/{utf8:query}` | Multibyte UTF-8 тэмдэгтүүд (Кирилл, Хятад, Араб гэх мэт) | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@ \x80-\xFF-]+)` |
 
 **Example:**
 ```php
@@ -442,6 +453,11 @@ $router->GET('/price/{float:amount}', function (float $amount) {
 // String параметр (default)
 $router->GET('/tag/{slug}', function (string $slug) {
     echo "Tag: $slug";
+});
+
+// UTF-8 параметр (Кирилл, Хятад, Араб гэх мэт)
+$router->GET('/search/{utf8:query}', function (string $query) {
+    echo "Search: $query";
 });
 ```
 

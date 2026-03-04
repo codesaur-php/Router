@@ -513,7 +513,7 @@ class RouterTest extends TestCase
     }
 
     /**
-     * Монгол үсэгтэй параметр тааруулах тест
+     * Монгол үсэгтэй параметр тааруулах тест (DEFAULT_REGEX, percent-encoded)
      */
     public function testMatchRouteWithMongolianCharacters(): void
     {
@@ -524,5 +524,85 @@ class RouterTest extends TestCase
         $result = $this->router->match('/hello/' . $encoded, 'GET');
         $this->assertInstanceOf(Callback::class, $result);
         $this->assertEquals('Наранхүү', $result->getParameters()['name']);
+    }
+
+    /**
+     * {utf8:} параметр percent-encoded Кирилл тэмдэгтээр тааруулах
+     */
+    public function testUtf8ParamMatchesPercentEncodedCyrillic(): void
+    {
+        $this->router->GET('/search/{utf8:query}', function () {
+        });
+
+        $encoded = rawurlencode('Монгол');
+        $result = $this->router->match('/search/' . $encoded, 'GET');
+        $this->assertInstanceOf(Callback::class, $result);
+        $this->assertEquals('Монгол', $result->getParameters()['query']);
+    }
+
+    /**
+     * {utf8:} параметр raw UTF-8 тэмдэгтээр тааруулах (server decoded path)
+     */
+    public function testUtf8ParamMatchesRawUtf8(): void
+    {
+        $this->router->GET('/search/{utf8:query}', function () {
+        });
+
+        $result = $this->router->match('/search/Монгол', 'GET');
+        $this->assertInstanceOf(Callback::class, $result);
+        $this->assertEquals('Монгол', $result->getParameters()['query']);
+    }
+
+    /**
+     * {utf8:} параметр хоосон зайтай текст тааруулах
+     */
+    public function testUtf8ParamMatchesTextWithSpaces(): void
+    {
+        $this->router->GET('/search/{utf8:query}', function () {
+        });
+
+        $encoded = rawurlencode('Сайн байна уу');
+        $result = $this->router->match('/search/' . $encoded, 'GET');
+        $this->assertInstanceOf(Callback::class, $result);
+        $this->assertEquals('Сайн байна уу', $result->getParameters()['query']);
+    }
+
+    /**
+     * {utf8:} параметр олон параметртэй route дээр ажиллах
+     */
+    public function testUtf8ParamWithMultipleParams(): void
+    {
+        $this->router->GET('/user/{int:id}/{utf8:name}', function () {
+        })->name('user');
+
+        $encoded = rawurlencode('Наранхүү');
+        $result = $this->router->match('/user/42/' . $encoded, 'GET');
+        $this->assertInstanceOf(Callback::class, $result);
+        $this->assertEquals(42, $result->getParameters()['id']);
+        $this->assertEquals('Наранхүү', $result->getParameters()['name']);
+    }
+
+    /**
+     * {utf8:} нэртэй route-аас URL generate хийх
+     */
+    public function testUtf8ParamGenerateUrl(): void
+    {
+        $this->router->GET('/search/{utf8:query}', function () {
+        })->name('search');
+
+        $url = $this->router->generate('search', ['query' => 'Монгол']);
+        $this->assertEquals('/search/Монгол', $url);
+    }
+
+    /**
+     * DEFAULT {string} параметр raw UTF-8 тааруулахгүй байх
+     */
+    public function testDefaultParamDoesNotMatchRawUtf8(): void
+    {
+        $this->router->GET('/echo/{word}', function () {
+        });
+
+        $result = $this->router->match('/echo/Монгол', 'GET');
+        $this->assertNull($result);
     }
 }

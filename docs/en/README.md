@@ -6,7 +6,7 @@ Lightweight, fast, object-oriented routing component
 
 **Features:**
 - ⚡ Fast: dynamic parameter matching + regex filtering 
-- 🔧 Multiple parameter types: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`
+- 🔧 Multiple parameter types: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`, `{utf8:text}`
 - 🎯 Route name → URL generation (reverse routing)
 - 🧩 Supports Controller and Closure callbacks
 - 🔀 Router merge (combining module routes.php files)
@@ -132,6 +132,7 @@ Route parameters can be defined with types:
 | `{uint:page}` | `/users/{uint:page}` | Only positive integers |
 | `{float:num}` | `/price/{float:num}` | 1.4, -2.56, etc. |
 | `{word}` | `/tag/{word}` | A-z0-9 and URL-safe characters |
+| `{utf8:text}` | `/search/{utf8:query}` | UTF-8 multibyte characters (Cyrillic, CJK, Arabic, etc.) |
 
 Example:
 

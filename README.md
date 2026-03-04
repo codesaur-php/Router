@@ -83,6 +83,11 @@ $router->GET('/news/{int:id}', function(int $id) {
     echo "News ID: $id";
 })->name('news-view');
 
+// UTF-8 параметр / UTF-8 parameter (Cyrillic, CJK, etc.)
+$router->GET('/search/{utf8:query}', function(string $query) {
+    echo "Search: $query";
+})->name('search');
+
 // Маршрут тааруулах / Match route
 $callback = $router->match('/news/10', 'GET');
 if ($callback) {

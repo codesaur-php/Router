@@ -6,7 +6,7 @@
 
 Онцлог:
 - ⚡ Хурдан: dynamic parameter matching + regex filtering 
-- 🔧 Олон төрлийн параметр: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`
+- 🔧 Олон төрлийн параметр: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`, `{utf8:text}`
 - 🎯 Route name → URL generate (reverse routing)
 - 🧩 Controller болон Closure callback дэмжинэ
 - 🔀 Router merge (модулиудын routes.php-г нэгтгэх)
@@ -132,6 +132,7 @@ $router->GET('/user/{int:id}', [UserController::class, 'show'])
 | `{uint:page}` | `/users/{uint:page}` | Зөвхөн эерэг бүхэл тоо |
 | `{float:num}` | `/price/{float:num}` | 1.4, -2.56 гэх мэт |
 | `{word}` | `/tag/{word}` | A-z0-9 болон URL-safe тэмдэгтүүд |
+| `{utf8:text}` | `/search/{utf8:query}` | UTF-8 multibyte тэмдэгтүүд (Кирилл, Хятад, Араб гэх мэт) |
 
 Жишээ:
 

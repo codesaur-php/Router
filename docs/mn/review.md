@@ -126,6 +126,7 @@
 1. **Test coverage**
    - Бүх public method-ууд тест хийгдсэн
    - Edge case-ууд бас тест хийгдсэн
+   - UTF-8 параметр (`{utf8:}`) percent-encoded болон raw UTF-8 path-аар тест хийгдсэн
 
 2. **Test structure**
    - `RouterTest` болон `CallbackTest` сайн тусгаарлагдсан

@@ -126,6 +126,7 @@ This document is a code review report for the `codesaur/router` package.
 1. **Test coverage**
    - All public methods are tested
    - Edge cases are also tested
+   - UTF-8 parameter (`{utf8:}`) tested with percent-encoded and raw UTF-8 paths
 
 2. **Test structure**
    - `RouterTest` and `CallbackTest` are well separated

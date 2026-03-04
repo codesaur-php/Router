@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [5.1.0] - 2026-03-04
+[5.1.0]: https://github.com/codesaur-php/Router/compare/v5.0.0...v5.1.0
+
+### ✨ Added
+
+- **UTF-8 parameter type restored** - Re-introduced `{utf8:param}` parameter type (was in v4.0, removed in v5.0.0)
+  - Supports multibyte characters in URL parameters (Cyrillic, CJK, Arabic, etc.)
+  - Matches both percent-encoded (`%D0%9C%D0%BE...`) and raw UTF-8 (`Монгол`) paths
+  - Works on all PHP servers: Apache, Nginx, LiteSpeed, IIS, Caddy, PHP built-in
+  - Usage: `$router->GET('/search/{utf8:query}', ...)`
+- **`UTF8_REGEX` constant** - Regex pattern for UTF-8 parameters (`\x80-\xFF` byte range)
+- **Example route** - Added `/unicode/{utf8:string}` demo route
+  - Displays Unicode code point, hex value, and byte length for each character
+
+### 📋 Technical Details
+
+- `{utf8:}` extends `DEFAULT_REGEX` with `\x80-\xFF` byte range and space character
+- **Zero impact** on existing `{string}`, `{int:}`, `{uint:}`, `{float:}` parameters — no code or performance changes
+- Added `utf8:` to `FILTERS_REGEX`: `/\{(int:|uint:|float:|utf8:)?(\w+)}/`
+
+---
+
 ## [5.0.0] - 2026-01-08
 [5.0.0]: https://github.com/codesaur-php/Router/compare/v4.0...v5.0.0
 
@@ -52,7 +74,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🗑️ Removed
 
-- **UTF8 parameter support** - Removed `utf8:` parameter type that was in v4.0
+- **UTF8 parameter support** - Removed `utf8:` parameter type that was in v4.0 *(restored in [5.1.0])*
 - **Legacy code** - Removed old PHP 7.2 compatible syntax
 
 ---

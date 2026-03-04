@@ -134,9 +134,9 @@ Small, stable, can be used standalone without a framework.
 
 Regex pattern to detect routes with parameters.
 
-**Value:** `'/\{(int:|uint:|float:)?(\w+)}/'`
+**Value:** `'/\{(int:|uint:|float:|utf8:)?(\w+)}/'`
 
-This regex detects all types of parameters like `{param}`, `{int:id}`, `{uint:page}`, `{float:price}`.
+This regex detects all types of parameters like `{param}`, `{int:id}`, `{uint:page}`, `{float:price}`, `{utf8:text}`.
 
 **Example:** `/news/{int:id}/{slug}`
 
@@ -171,6 +171,16 @@ Regex pattern for FLOAT type parameters. Allows negative and positive decimal nu
 Regex pattern for DEFAULT string type parameters. Allows URL-safe characters and some special characters.
 
 **Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)'`
+
+---
+
+#### `UTF8_REGEX`
+
+Regex pattern for UTF-8 string type parameters. Extends `DEFAULT_REGEX` with multibyte UTF-8 byte range (`\x80-\xFF`) and space character. Matches both percent-encoded and raw UTF-8 characters (Cyrillic, CJK, Arabic, etc.).
+
+**Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)'`
+
+Works on all PHP servers (Apache, Nginx, LiteSpeed, IIS, Caddy, PHP built-in).
 
 ---
 
@@ -426,6 +436,7 @@ Router supports the following parameter types:
 | Unsigned Integer | `{uint:page}` | `/users/{uint:page}` | Only positive integers (0 and above) | `(\d+)` |
 | Float | `{float:num}` | `/price/{float:num}` | 1.4, -2.56, etc. | `(-?\d+|-?\d*\.\d+)` |
 | String (default) | `{slug}` | `/tag/{slug}` | A-z0-9 and URL-safe characters | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@-]+)` |
+| UTF-8 String | `{utf8:text}` | `/search/{utf8:query}` | Multibyte UTF-8 characters (Cyrillic, CJK, Arabic, etc.) | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@ \x80-\xFF-]+)` |
 
 **Example:**
 ```php
@@ -442,6 +453,11 @@ $router->GET('/price/{float:amount}', function (float $amount) {
 // String parameter (default)
 $router->GET('/tag/{slug}', function (string $slug) {
     echo "Tag: $slug";
+});
+
+// UTF-8 parameter (Cyrillic, CJK, Arabic, etc.)
+$router->GET('/search/{utf8:query}', function (string $query) {
+    echo "Search: $query";
 });
 ```
 

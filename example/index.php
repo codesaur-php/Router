@@ -54,8 +54,9 @@ class ExampleController
         echo "<p>Доорх нь энэ жишээ файл дээр бүртгэгдсэн бүх маршрутууд:</p>";
         echo "<ul>";
         echo "<li><a href='{$base}/echo/test'>/echo/test</a></li>";
-        echo "<li><a href='{$base}/hello/Тэмүжин/Хан'>/hello/{firstname}/{lastname}</a></li>";
+        echo "<li><a href='{$base}/hello/Temujin/Khan'>/hello/{firstname}/{lastname}</a></li>";
         echo "<li><a href='{$base}/test-all-filters/word/f/f/10/20/1.5/sample'>/test-all-filters/*</a></li>";
+        echo "<li><a href='{$base}/unicode/Сайн%20байна%20уу'>/unicode/{utf8:string} (UTF-8 мэдээлэл)</a></li>";
         echo "<li><a href='{$base}/numeric/7.53'>/numeric/{float}</a></li>";
         echo "<li><a href='{$base}/sum/5/7'>/sum/{int:a}/{uint:b}</a></li>";
         echo "<li><a href='{$base}/generate'>/generate (URL үүсгэх тест)</a></li>";
@@ -154,6 +155,48 @@ class ExampleController
     {
         \var_dump($number);
     }
+
+    /**
+     * UTF-8 тэмдэгт мөрийн мэдээлэл харуулах
+     *
+     * GET /unicode/{utf8:string} маршрутын callback.
+     * Өгөгдсөн UTF-8 тэмдэгт мөрийг задлан шинжилж,
+     * тэмдэгт тус бүрийн Unicode code point, байтын урт,
+     * болон нэрийг харуулна.
+     *
+     * @param string $string Router-аас аль хэдийн decode хийгдсэн UTF-8 тэмдэгт мөр
+     * @return void
+     */
+    public function unicode(string $string)
+    {
+        echo "<h3>UTF-8 Unicode мэдээлэл</h3>";
+        echo "<p><b>Оролт:</b> " . \htmlspecialchars($string, \ENT_QUOTES, 'UTF-8') . "</p>";
+        echo "<p><b>Байтын урт:</b> " . \strlen($string) . " байт</p>";
+        echo "<p><b>Тэмдэгтийн тоо:</b> " . \mb_strlen($string, 'UTF-8') . "</p>";
+        echo "<p><b>Encoding:</b> " . (\mb_detect_encoding($string, 'UTF-8', true) ? 'UTF-8' : 'Тодорхойгүй') . "</p>";
+
+        echo "<table border='1' cellpadding='6' cellspacing='0'>";
+        echo "<tr><th>#</th><th>Тэмдэгт</th><th>Code Point</th><th>Hex</th><th>Байт</th></tr>";
+
+        $length = \mb_strlen($string, 'UTF-8');
+        for ($i = 0; $i < $length; $i++) {
+            $char = \mb_substr($string, $i, 1, 'UTF-8');
+            $codepoint = \mb_ord($char, 'UTF-8');
+            $hex = \sprintf('U+%04X', $codepoint);
+            $bytes = \strlen($char);
+            $safeChar = \htmlspecialchars($char, \ENT_QUOTES, 'UTF-8');
+
+            echo "<tr>";
+            echo "<td>" . ($i + 1) . "</td>";
+            echo "<td style='font-size:1.4em'>{$safeChar}</td>";
+            echo "<td>{$codepoint}</td>";
+            echo "<td>{$hex}</td>";
+            echo "<td>{$bytes}</td>";
+            echo "</tr>";
+        }
+
+        echo "</table>";
+    }
 }
 
 /* -----------------------------------------------------------------------------
@@ -171,8 +214,8 @@ $router = new Router();
 /* Энгийн GET / маршрут - үндсэн хуудас */
 $router->GET('/', [ExampleController::class, 'index']);
 
-/* POST /сайнуу/{firstname} - Монгол үсэг дэмжих жишээ */
-$router->POST('/сайнуу/{firstname}', [ExampleController::class, 'greetings']);
+/* POST /сайнуу/{utf8:firstname} - Монгол үсэг дэмжих жишээ (UTF-8 параметр) */
+$router->POST('/сайнуу/{utf8:firstname}', [ExampleController::class, 'greetings']);
 
 /* GET /echo/{singleword} - Нэг параметртэй, нэртэй маршрут */
 $router->GET('/echo/{singleword}', [ExampleController::class, 'echo'])
@@ -183,12 +226,16 @@ $router->GET('/hello/{firstname}/{lastname}', [ExampleController::class, 'greeti
     ->name('hello');
 
 /* Бүх төрлийн regex filter-тэй маршрут - int, uint, float, string */
-$router->GET('/test-all-filters/{singleword}/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{word}',
+$router->GET('/test-all-filters/{singleword}/{firstname}/{lastname}/{int:a}/{uint:b}/{float:number}/{utf8:word}',
     [ExampleController::class, 'test']
 )->name('test-filters');
 
 /* POST form test - POST method-тай маршрут */
 $router->POST('/hello', [ExampleController::class, 'post']);
+
+/* Unicode - UTF-8 тэмдэгт мөрийн мэдээлэл харуулах маршрут */
+$router->GET('/unicode/{utf8:string}', [ExampleController::class, 'unicode'])
+    ->name('unicode');
 
 /* Float parameter - FLOAT төрлийн параметртэй маршрут */
 $router->GET('/numeric/{float:number}', [ExampleController::class, 'number'])
@@ -207,15 +254,16 @@ $router->GET('/generate', function () use ($router)
 
     echo 'echo → ' . $router->generate('echo', ['singleword' => 'Амжилт']) . '<br/>';
     echo 'hello → ' . $router->generate('hello', [
-        'firstname' => 'Наранхүү',
+        'firstname' => 'Narankhuu',
         'lastname' => 'codesaur'
     ]) . '<br/>';
     echo 'sum → ' . $router->generate('sum', ['a' => 7, 'b' => 13]) . '<br/>';
+    echo 'unicode → ' . $router->generate('unicode', ['string' => 'Монгол']) . '<br/>';
     echo 'float → ' . $router->generate('float', ['number' => 753.9]) . '<br/>';
     echo 'test-filters → ' . $router->generate('test-filters', [
         'singleword' => 'demo',
-        'firstname' => 'Болд',
-        'lastname' => 'Баатар',
+        'firstname' => 'Bold',
+        'lastname' => 'Baatar',
         'a' => -10,
         'b' => 999,
         'number' => 17.55,
@@ -250,8 +298,8 @@ $router->GET('/speed/test', function () use ($router)
     $start_generate = \microtime(true);
     while ($index > 0) {
         $routes[] = $router->generate('hello', [
-            'firstname' => 'Тэмүжин',
-            'lastname' => 'Хан'
+            'firstname' => 'Temujin',
+            'lastname' => 'Khan'
         ]);
         $index--;
     }
