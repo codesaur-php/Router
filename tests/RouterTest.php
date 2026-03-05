@@ -457,7 +457,7 @@ class RouterTest extends TestCase
         };
 
         $this->router->GET('/closure', $closure);
-        
+
         // Таарахгүй маршрут шалгах
         $result = $this->router->match('/route', 'GET');
         $this->assertNull($result);
@@ -470,7 +470,7 @@ class RouterTest extends TestCase
 
     /**
      * Trailing slash-тэй маршрут тааруулах тест
-     * 
+     *
      * Тайлбар: Router нь trailing slash-ийг зөвхөн параметртэй маршрутуудад дэмждэг.
      * Энгийн маршрутуудад trailing slash байхгүй байх ёстой.
      */
@@ -483,14 +483,14 @@ class RouterTest extends TestCase
         $result = $this->router->match('/user/10/', 'GET');
         $this->assertInstanceOf(Callback::class, $result);
         $this->assertEquals(['id' => 10], $result->getParameters());
-        
+
         // Энгийн маршрут - trailing slash байхгүй байх ёстой
         $this->router->GET('/home', function () {
         });
-        
+
         $result = $this->router->match('/home', 'GET');
         $this->assertInstanceOf(Callback::class, $result);
-        
+
         $result = $this->router->match('/home/', 'GET');
         $this->assertNull($result, 'Энгийн маршрут trailing slash-тэй таарах ёсгүй');
     }

@@ -4,7 +4,7 @@ namespace codesaur\Router\Tests;
 
 /**
  * Тест helper класс
- * 
+ *
  * Тестүүдэд ашиглах helper классууд
  */
 class TestController

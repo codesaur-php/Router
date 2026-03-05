@@ -23,14 +23,14 @@ class Callback
      * @var callable|array{class-string, string}
      */
     private $_callable;
-    
+
     /**
      * Callable-д дамжуулах параметрийн жагсаалт.
      *
      * @var array<string, mixed>
      */
     private array $_params = [];
-    
+
     /**
      * Callback constructor.
      *
@@ -41,7 +41,7 @@ class Callback
     {
         $this->_callable = $callable;
     }
-    
+
     /**
      * Бүртгэлтэй callable-г буцаана.
      *
@@ -64,7 +64,7 @@ class Callback
     {
         return $this->_params;
     }
-    
+
     /**
      * Callable-д дамжуулах параметрүүдийг онооно.
      *

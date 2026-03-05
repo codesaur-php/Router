@@ -1,16 +1,16 @@
-# 🦖 codesaur/router  
+# codesaur/router  
 
 Хөнгөн, хурдан, объект-суурьтай маршрутчиллын (routing) компонент
 
 `codesaur/router` нь **codesaur ecosystem**-ийн нэг хэсэг боловч бие даасан байдлаар ашиглах боломжтой, жижиг хэмжээтэй боловч маш уян хатан Router компонент юм.
 
 Онцлог:
-- ⚡ Хурдан: dynamic parameter matching + regex filtering 
-- 🔧 Олон төрлийн параметр: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`, `{utf8:text}`
-- 🎯 Route name → URL generate (reverse routing)
-- 🧩 Controller болон Closure callback дэмжинэ
-- 🔀 Router merge (модулиудын routes.php-г нэгтгэх)
-- 🌙 Standalone ашиглаж болно (framework шаардлагагүй)
+- Хурдан: dynamic parameter matching + regex filtering
+- Олон төрлийн параметр: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`, `{utf8:text}`
+- Route name -> URL generate (reverse routing)
+- Controller болон Closure callback дэмжинэ
+- Router merge (модулиудын routes.php-г нэгтгэх)
+- Standalone ашиглаж болно (framework шаардлагагүй)
 
 ---
 
@@ -156,7 +156,7 @@ URL generate хийх:
 
 ```php
 $url = $router->generate('profile', ['id' => 25]);
-// → /profile/25
+// -> /profile/25
 ```
 
 Буруу төрлийн параметр дамжуулбал:
@@ -165,7 +165,7 @@ $url = $router->generate('profile', ['id' => 25]);
 $router->generate('profile', ['id' => 'abc']);
 ```
 
-Үр дүн → `InvalidArgumentException`
+Үр дүн -> `InvalidArgumentException`
 
 ---
 
@@ -181,7 +181,7 @@ if ($callback instanceof Callback) {
     // Callable болон параметрүүдийг авах
     $callable = $callback->getCallable();
     $params = $callback->getParameters();
-    
+
     // Callback гүйцэтгэх
     call_user_func_array($callable, $params);
 } else {
@@ -202,7 +202,7 @@ $callback = $router->match($path, $method);
 if ($callback instanceof Callback) {
     $callable = $callback->getCallable();
     $params = $callback->getParameters();
-    
+
     if ($callable instanceof \Closure) {
         call_user_func_array($callable, $params);
     } else {
@@ -220,13 +220,13 @@ if ($callback instanceof Callback) {
 
 `example/index.php` файл нь бүх функцүүдийг нэг дор харуулна:
 
-- ✅ GET/POST маршрут бүртгэх  
-- ✅ Controller класстай ажиллах  
-- ✅ Параметрийн төрөл шалгах (int, uint, float, string)  
-- ✅ URL generate тест (reverse routing)  
-- ✅ Гүйцэтгэл тест (Performance Test - 10,000 удаа)
-- ✅ Автомат base-path support
-- ✅ Монгол үсэг дэмжлэг
+- GET/POST маршрут бүртгэх  
+- Controller класстай ажиллах  
+- Параметрийн төрөл шалгах (int, uint, float, string)  
+- URL generate тест (reverse routing)  
+- Гүйцэтгэл тест (Performance Test - 10,000 удаа)
+- Автомат base-path support
+- Монгол үсэг дэмжлэг
 
 Жишээ файлыг ажиллуулах:
 ```bash
@@ -265,11 +265,11 @@ $callback = $mainRouter->match('/module/users', 'GET');
 
 Энэ проект нь GitHub Actions ашиглан автоматаар CI/CD хийгддэг:
 
-- ✅ Олон PHP хувилбарууд дээр тест (8.2, 8.3, 8.4)
-- ✅ Ubuntu болон Windows дээр тест
-- ✅ Composer dependencies суулгах
-- ✅ PHPUnit тестүүд ажиллуулах
-- ✅ Code coverage хэмжих
+- Олон PHP хувилбарууд дээр тест (8.2, 8.3, 8.4)
+- Ubuntu болон Windows дээр тест
+- Composer dependencies суулгах
+- PHPUnit тестүүд ажиллуулах
+- Code coverage хэмжих
 
 CI/CD workflow нь `main`, `master`, `develop` салбарууд дээр push эсвэл pull request хийхэд автоматаар ажиллана.
 
@@ -279,9 +279,9 @@ CI/CD workflow нь `main`, `master`, `develop` салбарууд дээр push
 
 Энэ пакетийн дэлгэрэнгүй баримт бичгүүд:
 
-- 📚 **[API](api.md)** - Бүх public API-ийн дэлгэрэнгүй тайлбар, method-ууд, parameter-ууд, exception-ууд (PHPDoc-уудаас Cursor AI ашиглан автоматаар үүсгэсэн)
-- 🔍 **[REVIEW](review.md)** - Код шалгалтын тайлан, давуу талууд, сайжруулах боломжууд  (Cursor AI ашиглан үүсгэсэн)
-- 📋 **[CHANGELOG](../../CHANGELOG.md)** - Пакетийн бүх хувилбаруудын өөрчлөлтийн түүх
+- **[API](api.md)** - Бүх public API-ийн дэлгэрэнгүй тайлбар, method-ууд, parameter-ууд, exception-ууд (PHPDoc-уудаас Cursor AI ашиглан автоматаар үүсгэсэн)
+- **[REVIEW](review.md)** - Код шалгалтын тайлан, давуу талууд, сайжруулах боломжууд  (Cursor AI ашиглан үүсгэсэн)
+- **[CHANGELOG](../../CHANGELOG.md)** - Пакетийн бүх хувилбаруудын өөрчлөлтийн түүх
 
 ---
 
@@ -318,13 +318,13 @@ vendor/bin/phpunit --filter testMatch tests/RouterTest.php  # Тодорхой m
 
 ---
 
-## 📄 Лиценз
+## Лиценз
 
 Энэ төсөл MIT лицензтэй.
 
 ---
 
-## 👨‍💻 Зохиогч
+## Зохиогч
 
 Narankhuu  
 https://github.com/codesaur  

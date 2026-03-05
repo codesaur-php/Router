@@ -11,7 +11,7 @@ namespace codesaur\Router;
  *  - Маршрут бүртгэх (динамик __call ашиглан: $router->GET('/news', ...) хэлбэрээр)
  *  - {int:id}, {float:price}, {uint:page}, {slug} гэх мэт параметртэй маршрут боловсруулах
  *  - Request path болон HTTP method-д тохирох маршрутыг match() ашиглан олох
- *  - Route name → URL generate хийх
+ *  - Route name -> URL generate хийх
  *  - Модулийн бусад Router-уудыг merge() ашиглан нэгтгэх
  *
  * Жижиг, тогтвортой, фрэймворкоос үл хамааран standalone байдлаар ашиглаж болно.
@@ -26,14 +26,14 @@ class Router implements RouterInterface
      * @var array<string, array<string, Callback>>
      */
     protected array $routes = [];
-    
+
     /**
-     * Route name → pattern жагсаалт.
+     * Route name -> pattern жагсаалт.
      *
      * @var array<string, string>
      */
     protected array $name_patterns = [];
-    
+
     /**
      * Сүүлд бүртгэгдэж буй маршрутын pattern.
      *
@@ -93,7 +93,7 @@ class Router implements RouterInterface
      * @const string
      */
     const UTF8_REGEX = '([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)';
-    
+
     /**
      * Магик метод - GET, POST, PUT, DELETE гэх мэт маршрут бүртгэнэ.
      *
@@ -120,7 +120,7 @@ class Router implements RouterInterface
                 'Invalid route configuration for ' . __CLASS__ . ":$method"
             );
         }
-        
+
         $this->_pattern = $properties[0];
 
         if (\is_array($properties[1]) || \is_callable($properties[1])) {
@@ -130,12 +130,12 @@ class Router implements RouterInterface
                 __CLASS__ . ": Invalid callback on route pattern [$this->_pattern]"
             );
         }
-        
+
         $this->routes[$this->_pattern][$method] = $callback;
 
         return $this;
     }
-    
+
     /**
      * Сүүлд бүртгэгдсэн маршрутад нэр онооно.
      *
@@ -145,7 +145,7 @@ class Router implements RouterInterface
      *
      * Жишээ:
      *   $router->GET('/news/{int:id}', ...)->name('news-view');
-     *   $url = $router->generate('news-view', ['id' => 10]); // → /news/10
+     *   $url = $router->generate('news-view', ['id' => 10]); // -> /news/10
      *
      * @param string $ruleName Маршрутын нэр (уникаль байх ёстой)
      * @return void
@@ -157,7 +157,7 @@ class Router implements RouterInterface
             unset($this->_pattern);
         }
     }
-    
+
     /**
      * Request path болон HTTP method-д тохирох маршрутыг хайж олно.
      *
@@ -173,12 +173,12 @@ class Router implements RouterInterface
     {
         foreach ($this->routes as $pattern => $route) {
             foreach ($route as $methods => $callback) {
-                
+
                 // Method check: "GET_POST" гэх мэт олон method-ууд нэг route-д байж болно
                 if (!\in_array($method, \explode('_', $methods))) {
                     continue;
                 }
-                
+
                 // Pattern 100% ижил бол параметргүй маршрут - шууд буцаана
                 if ($path == $pattern) {
                     return $callback;
@@ -186,7 +186,7 @@ class Router implements RouterInterface
 
                 $filters = [];
                 $paramMatches = [];
-                
+
                 // Параметрүүдтэй эсэхийг шалгана - хэрэв параметр байхгүй бол дараагийн route руу шилжинэ
                 if (!\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
                     continue;
@@ -234,14 +234,14 @@ class Router implements RouterInterface
 
                 // Параметрүүдийг Callback объектод set хийж, буцаана
                 $callback->setParameters($params);
-                
+
                 return $callback;
             }
         }
 
         return null;
     }
-    
+
     /**
      * Өөр router-ийн маршрутыг энэ router-т нэгтгэнэ.
      *
@@ -256,23 +256,23 @@ class Router implements RouterInterface
     {
         // Маршрутуудыг нэгтгэнэ
         $this->routes = \array_merge($this->routes, $router->getRoutes());
-        
+
         // Хэрэв нэгтгэж буй router нь Router классын instance бол
         // name_patterns-ийг мөн нэгтгэнэ (ижил нэртэй route байвал эхнийх нь давуу тал болно)
         if ($router instanceof Router && !empty($router->name_patterns)) {
             $this->name_patterns += $router->name_patterns;
         }
     }
-    
+
     /**
-     * Route name → URL generate хийнэ (reverse routing).
+     * Route name -> URL generate хийнэ (reverse routing).
      *
      * Нэртэй маршрутын pattern-д параметрүүдийг суулгаж, бодит URL үүсгэнэ.
      * Параметрийн төрөл (int, uint, float) шалгагдаж, буруу бол exception шиднэ.
      *
      * Жишээ:
      *   $router->GET('/news/{int:id}', ...)->name('news-view');
-     *   $url = $router->generate('news-view', ['id' => 10]); // → /news/10
+     *   $url = $router->generate('news-view', ['id' => 10]); // -> /news/10
      *
      * @param string $ruleName Route name (name() методоор бүртгэсэн)
      * @param array<string,mixed> $params Параметрүүд (жишээ: ['id' => 10, 'slug' => 'test'])
@@ -296,7 +296,7 @@ class Router implements RouterInterface
         if (empty($params)) {
             return $pattern;
         }
-        
+
         // Pattern-аас бүх параметрүүдийг олох
         $paramMatches = [];
         if (\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
@@ -336,7 +336,7 @@ class Router implements RouterInterface
                             break;
                     }
 
-                    // Pattern-д параметр суулгах - {int:id} → бодит утга
+                    // Pattern-д параметр суулгах - {int:id} -> бодит утга
                     $pattern = \preg_replace(
                         '/\{' . $filter . '(\w+)\}/',
                         $params[$key],
@@ -346,10 +346,10 @@ class Router implements RouterInterface
                 }
             }
         }
-        
+
         return $pattern;
     }
-    
+
     /**
      * Бүртгэлтэй маршрутуудын жагсаалтыг буцаана.
      *
@@ -359,7 +359,7 @@ class Router implements RouterInterface
     {
         return $this->routes;
     }
-    
+
     /**
      * Маршрутын pattern-ийг regex болгон хөрвүүлнэ.
      *
@@ -368,7 +368,7 @@ class Router implements RouterInterface
      * тохирох regex pattern-аар солино.
      *
      * @param string $pattern Route pattern (жишээ: /news/{int:id}/{slug})
-     * @param array<string,string> $filters Параметр нэр → regex pattern mapping
+     * @param array<string,string> $filters Параметр нэр -> regex pattern mapping
      *                                      (жишээ: ['id' => '(-?\d+)', 'slug' => '(...)'])
      * @return string Бэлтгэсэн regex pattern (match() метод дотор ашиглах)
      */

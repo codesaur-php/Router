@@ -1,16 +1,16 @@
-# 🦖 codesaur/router  
+# codesaur/router  
 
 Lightweight, fast, object-oriented routing component
 
 `codesaur/router` is part of the **codesaur ecosystem** but can be used independently as a small yet very flexible Router component.
 
 **Features:**
-- ⚡ Fast: dynamic parameter matching + regex filtering 
-- 🔧 Multiple parameter types: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`, `{utf8:text}`
-- 🎯 Route name → URL generation (reverse routing)
-- 🧩 Supports Controller and Closure callbacks
-- 🔀 Router merge (combining module routes.php files)
-- 🌙 Can be used standalone (no framework required)
+- Fast: dynamic parameter matching + regex filtering
+- Multiple parameter types: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`, `{utf8:text}`
+- Route name -> URL generation (reverse routing)
+- Supports Controller and Closure callbacks
+- Router merge (combining module routes.php files)
+- Can be used standalone (no framework required)
 
 ---
 
@@ -156,7 +156,7 @@ Generate URL:
 
 ```php
 $url = $router->generate('profile', ['id' => 25]);
-// → /profile/25
+// -> /profile/25
 ```
 
 If wrong parameter type is passed:
@@ -165,7 +165,7 @@ If wrong parameter type is passed:
 $router->generate('profile', ['id' => 'abc']);
 ```
 
-Result → `InvalidArgumentException`
+Result -> `InvalidArgumentException`
 
 ---
 
@@ -181,7 +181,7 @@ if ($callback instanceof Callback) {
     // Get callable and parameters
     $callable = $callback->getCallable();
     $params = $callback->getParameters();
-    
+
     // Execute callback
     call_user_func_array($callable, $params);
 } else {
@@ -202,7 +202,7 @@ $callback = $router->match($path, $method);
 if ($callback instanceof Callback) {
     $callable = $callback->getCallable();
     $params = $callback->getParameters();
-    
+
     if ($callable instanceof \Closure) {
         call_user_func_array($callable, $params);
     } else {
@@ -220,13 +220,13 @@ if ($callback instanceof Callback) {
 
 The `example/index.php` file demonstrates all features:
 
-- ✅ GET/POST route registration  
-- ✅ Working with Controller classes  
-- ✅ Parameter type checking (int, uint, float, string)  
-- ✅ URL generation test (reverse routing)  
-- ✅ Performance test (10,000 iterations)
-- ✅ Automatic base-path support
-- ✅ Unicode character support
+- GET/POST route registration  
+- Working with Controller classes  
+- Parameter type checking (int, uint, float, string)  
+- URL generation test (reverse routing)  
+- Performance test (10,000 iterations)
+- Automatic base-path support
+- Unicode character support
 
 Run the example file:
 ```bash
@@ -265,11 +265,11 @@ $callback = $mainRouter->match('/module/users', 'GET');
 
 This project uses GitHub Actions for automated CI/CD:
 
-- ✅ Tests on multiple PHP versions (8.2, 8.3, 8.4)
-- ✅ Tests on Ubuntu and Windows
-- ✅ Install Composer dependencies
-- ✅ Run PHPUnit tests
-- ✅ Measure code coverage
+- Tests on multiple PHP versions (8.2, 8.3, 8.4)
+- Tests on Ubuntu and Windows
+- Install Composer dependencies
+- Run PHPUnit tests
+- Measure code coverage
 
 CI/CD workflow runs automatically on push or pull request to `main`, `master`, `develop` branches.
 
@@ -279,9 +279,9 @@ CI/CD workflow runs automatically on push or pull request to `main`, `master`, `
 
 Detailed documentation for this package:
 
-- 📚 **[API](api.md)** - Detailed documentation of all public APIs, methods, parameters, exceptions (auto-generated from PHPDoc using Cursor AI)
-- 🔍 **[REVIEW](review.md)** - Code review report, strengths, improvement opportunities (generated using Cursor AI)
-- 📋 **[CHANGELOG](../../CHANGELOG.md)** - History of all package version changes
+- **[API](api.md)** - Detailed documentation of all public APIs, methods, parameters, exceptions (auto-generated from PHPDoc using Cursor AI)
+- **[REVIEW](review.md)** - Code review report, strengths, improvement opportunities (generated using Cursor AI)
+- **[CHANGELOG](../../CHANGELOG.md)** - History of all package version changes
 
 ---
 
@@ -318,13 +318,13 @@ vendor/bin/phpunit --filter testMatch tests/RouterTest.php  # Run specific metho
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under MIT License.
 
 ---
 
-## 👨‍💻 Author
+## Author
 
 Narankhuu  
 https://github.com/codesaur  

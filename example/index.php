@@ -11,12 +11,12 @@ namespace codesaur\Router\Example;
  * тааруулах (match), болон callback гүйцэтгэх жишээг бүрэн харуулна.
  *
  * Багтаасан жишээнүүд:
- *   • GET / POST маршрут бүртгэх
- *   • Динамик параметртэй маршрут авах
+ *   - GET / POST маршрут бүртгэх
+ *   - Динамик параметртэй маршрут авах
  *       {firstname}, {int:id}, {uint:b}, {float:number} гэх мэт
- *   • Нэртэй route → URL generate хийх
- *   • Controller болон Closure callback хоёрыг хоёуланг нь дэмжих
- *   • 10,000 маршрутын generate & match хурд шалгах тест
+ *   - Нэртэй route -> URL generate хийх
+ *   - Controller болон Closure callback хоёрыг хоёуланг нь дэмжих
+ *   - 10,000 маршрутын generate & match хурд шалгах тест
  *
  * -----------------------------------------------------------------------------
  */
@@ -252,15 +252,15 @@ $router->GET('/generate', function () use ($router)
 {
     echo "<h3>URL үүсгэх тест (generate)</h3>";
 
-    echo 'echo → ' . $router->generate('echo', ['singleword' => 'Амжилт']) . '<br/>';
-    echo 'hello → ' . $router->generate('hello', [
+    echo 'echo -> ' . $router->generate('echo', ['singleword' => 'Амжилт']) . '<br/>';
+    echo 'hello -> ' . $router->generate('hello', [
         'firstname' => 'Narankhuu',
         'lastname' => 'codesaur'
     ]) . '<br/>';
-    echo 'sum → ' . $router->generate('sum', ['a' => 7, 'b' => 13]) . '<br/>';
-    echo 'unicode → ' . $router->generate('unicode', ['string' => 'Монгол']) . '<br/>';
-    echo 'float → ' . $router->generate('float', ['number' => 753.9]) . '<br/>';
-    echo 'test-filters → ' . $router->generate('test-filters', [
+    echo 'sum -> ' . $router->generate('sum', ['a' => 7, 'b' => 13]) . '<br/>';
+    echo 'unicode -> ' . $router->generate('unicode', ['string' => 'Монгол']) . '<br/>';
+    echo 'float -> ' . $router->generate('float', ['number' => 753.9]) . '<br/>';
+    echo 'test-filters -> ' . $router->generate('test-filters', [
         'singleword' => 'demo',
         'firstname' => 'Bold',
         'lastname' => 'Baatar',
@@ -319,7 +319,7 @@ $router->GET('/speed/test', function () use ($router)
 
 
 /* -----------------------------------------------------------------------------
- *  REQUEST → MATCH → DISPATCH
+ *  REQUEST -> MATCH -> DISPATCH
  *
  *  Энэ хэсэг нь орж ирсэн HTTP request-ийг боловсруулна:
  *  1. URL-ийг цэвэрлэх (query string, trailing slash)

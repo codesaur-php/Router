@@ -104,7 +104,7 @@ Generates URL based on route name (reverse routing).
 ```php
 $router->GET('/news/{int:id}', ...)->name('news-view');
 $url = $router->generate('news-view', ['id' => 10]);
-// → "/news/10"
+// -> "/news/10"
 ```
 
 ---
@@ -192,7 +192,7 @@ Magic method - registers routes like GET, POST, PUT, DELETE, etc.
 
 **Parameters:**
 - `string $method` - HTTP method name (GET, POST, PUT, DELETE, PATCH, etc.)
-- `array<mixed> $properties` - 
+- `array<mixed> $properties` -
   - `[0]` => route pattern (string) - route pattern
   - `[1]` => callback (callable|array) - callback to execute
 
@@ -231,7 +231,7 @@ Assigns a name to the last registered route.
 **Example:**
 ```php
 $router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // → /news/10
+$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
 ```
 
 ---
@@ -306,7 +306,7 @@ Generates URL from route name (reverse routing).
 **Example:**
 ```php
 $router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // → /news/10
+$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
 ```
 
 ---

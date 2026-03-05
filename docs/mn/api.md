@@ -104,7 +104,7 @@ Route name дээр үндэслэн URL үүсгэнэ (reverse routing).
 ```php
 $router->GET('/news/{int:id}', ...)->name('news-view');
 $url = $router->generate('news-view', ['id' => 10]);
-// → "/news/10"
+// -> "/news/10"
 ```
 
 ---
@@ -123,7 +123,7 @@ codesaur Framework-ийн хөнгөн жинтэй маршрутчилал (ro
 - Маршрут бүртгэх (динамик `__call` ашиглан: `$router->GET('/news', ...)` хэлбэрээр)
 - `{int:id}`, `{float:price}`, `{uint:page}`, `{slug}` гэх мэт параметртэй маршрут боловсруулах
 - Request path болон HTTP method-д тохирох маршрутыг `match()` ашиглан олох
-- Route name → URL generate хийх
+- Route name -> URL generate хийх
 - Модулийн бусад Router-уудыг `merge()` ашиглан нэгтгэх
 
 Жижиг, тогтвортой, фрэймворкоос үл хамааран standalone байдлаар ашиглаж болно.
@@ -192,7 +192,7 @@ UTF-8 string төрлийн параметрийн regex pattern. `DEFAULT_REGEX
 
 **Parameters:**
 - `string $method` - HTTP method нэр (GET, POST, PUT, DELETE, PATCH гэх мэт)
-- `array<mixed> $properties` - 
+- `array<mixed> $properties` -
   - `[0]` => route pattern (string) - маршрутын pattern
   - `[1]` => callback (callable|array) - гүйцэтгэх callback
 
@@ -231,7 +231,7 @@ $router->PUT('/users/{int:id}', [UserController::class, 'update']);
 **Example:**
 ```php
 $router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // → /news/10
+$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
 ```
 
 ---
@@ -287,7 +287,7 @@ $mainRouter->merge($moduleRouter);
 
 #### `generate(string $ruleName, array $params = []): string`
 
-Route name → URL generate хийнэ (reverse routing).
+Route name -> URL generate хийнэ (reverse routing).
 
 **Parameters:**
 - `string $ruleName` - Route name (name() методоор бүртгэсэн)
@@ -306,7 +306,7 @@ Route name → URL generate хийнэ (reverse routing).
 **Example:**
 ```php
 $router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // → /news/10
+$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
 ```
 
 ---

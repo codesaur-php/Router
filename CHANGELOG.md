@@ -6,10 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [5.1.1] - 2026-03-05
+[5.1.1]: https://github.com/codesaur-php/Router/compare/v5.1.0...v5.1.1
+
+### Changed
+
+- Removed all emoji characters from documentation and source files
+- Replaced Unicode symbols with ASCII
+
+---
+
 ## [5.1.0] - 2026-03-04
 [5.1.0]: https://github.com/codesaur-php/Router/compare/v5.0.0...v5.1.0
 
-### ✨ Added
+### Added
 
 - **UTF-8 parameter type restored** - Re-introduced `{utf8:param}` parameter type (was in v4.0, removed in v5.0.0)
   - Supports multibyte characters in URL parameters (Cyrillic, CJK, Arabic, etc.)
@@ -20,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Example route** - Added `/unicode/{utf8:string}` demo route
   - Displays Unicode code point, hex value, and byte length for each character
 
-### 📋 Technical Details
+### Technical Details
 
 - `{utf8:}` extends `DEFAULT_REGEX` with `\x80-\xFF` byte range and space character
 - **Zero impact** on existing `{string}`, `{int:}`, `{uint:}`, `{float:}` parameters - no code or performance changes
@@ -31,7 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [5.0.0] - 2026-01-08
 [5.0.0]: https://github.com/codesaur-php/Router/compare/v4.0...v5.0.0
 
-### ✨ Added
+### Added
 
 - **CI/CD workflow** - Automated testing using GitHub Actions
   - Tests on PHP 8.2, 8.3, 8.4 versions
@@ -61,7 +71,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Router merge, Matching & Dispatching sections made more detailed
   - CI/CD badges added
 
-### 🔧 Improved
+### Improved
 
 - **PHP version requirement** - Upgraded from PHP 7.2+ to **PHP 8.2.1+**
 - **Modern PHP syntax** - Switched from `array()` to `[]` array syntax
@@ -72,7 +82,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Type safety** - Callable types made more specific
 - **Pattern matching** - Direct pattern comparison for exact matches (performance improvement)
 
-### 🗑️ Removed
+### Removed
 
 - **UTF8 parameter support** - Removed `utf8:` parameter type that was in v4.0 *(restored in [5.1.0])*
 - **Legacy code** - Removed old PHP 7.2 compatible syntax
@@ -82,7 +92,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [4.0] - 2021-10-06
 [4.0]: https://github.com/codesaur-php/Router/compare/v1.0...v4.0
 
-### ✨ Added
+### Added
 
 - **Callback class** - Introduced separate `Callback` class to wrap callable and parameters
   - Replaces Route class approach from v1.0
@@ -100,7 +110,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - `name_patterns` array maps route names to patterns
   - Better reverse routing support
 
-### 🔧 Improved
+### Improved
 
 - **Architecture simplification** - Removed Route class, simplified to Callback-based approach
 - **Route matching** - Returns `Callback` object directly instead of `Route`
@@ -111,7 +121,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Method chaining** - `__call()` returns `&$this` for fluent interface
 - **Error handling** - Better exception messages with class context
 
-### 🗑️ Removed
+### Removed
 
 - **Route class** - Completely removed Route class
 - **Pipe property** - Removed `_pipe` property for route prefix (present in v1.0)
@@ -119,7 +129,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **HTTP method constants** - Removed `HTTP_REQUEST_METHODS` constant
 - **Complex route configuration** - Simplified route registration
 
-### 🔄 Changed
+### Changed
 
 - **match() return type** - Now returns `Callback|null` instead of `Route|null`
 - **generate() behavior** - Now throws `OutOfRangeException` instead of returning null
@@ -131,7 +141,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [1.0] - 2021-03-02
 [1.0]: https://github.com/codesaur-php/Router/releases/tag/v1.0
 
-### ✨ Added
+### Added
 
 - **Initial release** - First stable version of codesaur/router
 - **Router class** - Main routing class with full routing capabilities
@@ -166,7 +176,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - Parameter validation during generation
 - **Strict types** - Uses `declare(strict_types=1)` for type safety
 
-### 📋 Technical Details
+### Technical Details
 
 - **PHP version**: PHP 7.2+ required
 - **Array syntax**: Uses `array()` syntax (pre-PHP 5.4 style)
@@ -174,7 +184,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Route storage**: Array of Route objects
 - **Pattern matching**: Regex-based pattern matching with parameter extraction
 
-### 🏗️ Architecture
+### Architecture
 
 - **Object-oriented design** - Full OOP with classes and interfaces
 - **Separation of concerns** - Route class separate from Router class

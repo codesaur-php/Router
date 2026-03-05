@@ -26,7 +26,7 @@ interface RouterInterface
      *         Структур: ['pattern' => ['METHOD' => Callback объект]]
      */
     public function getRoutes(): array;
-    
+
     /**
      * Өөр Router-ийн маршрутуудыг энэ Router-тэй нэгтгэнэ.
      *
@@ -38,7 +38,7 @@ interface RouterInterface
      * @return void
      */
     public function merge(RouterInterface $router);
-    
+
     /**
      * Орж ирсэн URL pattern болон HTTP method дээр үндэслэн
      * тохирох маршрутыг хайж буцаана.
