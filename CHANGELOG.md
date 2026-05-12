@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [5.2.0] - 2026-05-12
+[5.2.0]: https://github.com/codesaur-php/Router/compare/v5.1.1...v5.2.0
+
+### Added
+
+- **`pattern()` method** - Returns route pattern with filter prefixes stripped, suitable for client-side substitution
+  - `pattern('news-view')` -> `/news/{id}/{slug}` (instead of `/news/{int:id}/{slug}`)
+  - Throws `OutOfRangeException` if route name not found (consistent with `generate()`)
+  - Required addition to `RouterInterface`
+  - Use case: server-rendered template emits the pattern, client-side JS performs substitution via `URL.replace('{id}', value)`
+  - Resolves the long-standing issue where `generate('route', ['id' => '_PLACEHOLDER_'])` would throw `InvalidArgumentException` because typed parameters (`{int:}`, `{uint:}`, `{float:}`) reject non-numeric placeholder strings
+- **4 new unit tests** covering filter stripping, all filter types (`int`/`uint`/`float`/`utf8`/default), static routes, and unknown-route exception (total suite: 54 tests, 103 assertions, all passing)
+- **`/pattern-test` example route** in `example/index.php` demonstrating the full client-side workflow:
+  - Table showing `pattern()` output for every named route in the example
+  - Side-by-side PHP template snippet (`<?= $router->pattern('hello') ?>`) and the rendered JS output it produces
+  - Interactive **Run test** button that performs JS `.replace()` substitution on the emitted patterns and `fetch()`es the real `/hello/Temujin/Khan` and `/sum/5/7` endpoints, printing both status codes and response bodies
+  - Auto-detects the script base path so the demo works under sub-directory installs (e.g. `/Router/example/`)
+
+### Technical Details
+
+- Single `preg_replace` over the existing `FILTERS_REGEX` constant - O(n) on pattern length, no extra state
+- Zero impact on `match()`, `generate()`, or `merge()` - new method is additive
+- New API summary:
+  | Method | Purpose | Use case |
+  |--------|---------|----------|
+  | `match($path, $method)` | Find a registered route for an incoming request | Request handling |
+  | `generate($name, $params)` | Build a fully resolved URL with validated parameters | Server-rendered `<a href="...">` |
+  | `pattern($name)` *(new)* | Emit a placeholder pattern for client-side substitution | JS `URL.replace('{id}', value)` |
+
+---
+
 ## [5.1.1] - 2026-03-05
 [5.1.1]: https://github.com/codesaur-php/Router/compare/v5.1.0...v5.1.1
 

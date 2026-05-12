@@ -8,7 +8,7 @@
 
  **Маш сайн бичигдсэн код** - Олон жилийн туршлага илт байна  
  **Тогтвортой архитектур** - Интерфэйс болон хэрэгжүүлэлт сайн тусгаарлагдсан  
- **Бүрэн тест** - PHPUnit ашиглан бүх функцүүд тест хийгдсэн  
+ **Бүрэн тест** - PHPUnit ашиглан 54 тест, 103 assertion-аар бүх public API шалгагдсан  
  **Сайн баримт бичиг** - PHPDoc болон comment-ууд маш дэлгэрэнгүй  
 
 ---
@@ -40,6 +40,11 @@
 6. **Router merge**
    - Модулиудын routes-г нэгтгэх боломж
    - Modular architecture-д тохиромжтой
+
+7. **Client-side URL pattern (`pattern()`)**
+   - Filter prefix (`int:`, `uint:`, `float:`, `utf8:`) хасч цэвэр `{name}` placeholder буцаана
+   - `generate()` нь төрөл шалгалт хийдэг тул JS-н placeholder утга буцаах боломжгүй байсныг шийдсэн
+   - JavaScript `URL.replace('{id}', value)` хийхэд бэлэн
 
 ---
 
@@ -124,9 +129,11 @@
 ### Сайн хийгдсэн
 
 1. **Test coverage**
-   - Бүх public method-ууд тест хийгдсэн
-   - Edge case-ууд бас тест хийгдсэн
-   - UTF-8 параметр (`{utf8:}`) percent-encoded болон raw UTF-8 path-аар тест хийгдсэн
+   - Нийт 54 тест, 103 assertion (PHPUnit 10.5)
+   - Бүх public method-ууд тест хийгдсэн (`match`, `generate`, `pattern`, `merge`, `getRoutes`, `name`, `__call`)
+   - Edge case-ууд: буруу параметр төрөл, олдохгүй route name, trailing slash, raw UTF-8 vs percent-encoded
+   - UTF-8 параметр (`{utf8:}`) percent-encoded, raw UTF-8 болон хоосон зайтай text-ээр тест хийгдсэн
+   - `pattern()` метод 4 тестээр хамрагдсан (filter prefix хасах, бүх filter type, static route, олдохгүй route)
 
 2. **Test structure**
    - `RouterTest` болон `CallbackTest` сайн тусгаарлагдсан
@@ -170,24 +177,9 @@
    - Method-ууд, parameter-ууд, exception-ууд
    - Жишээ код байна
 
-5. **REVIEW.md**
+5. **review.md**
    - Код шалгалтын тайлан
    - Давуу талууд болон сайжруулах боломжууд
-
-### Сайжруулалтууд хийгдсэн
-
-1. **PHPDoc сайжруулалт**
-   - Constant-ууд дээр `@const` annotation ашигласан
-   - `@return static` ашигласан (method chaining)
-   - Callable type-ийг илүү тодорхой болгосон
-
-2. **Example файл**
-   - Бүх method-ууд дээр PHPDoc нэмэгдсэн
-   - Comment-ууд илүү дэлгэрэнгүй болсон
-
-3. **Documentation**
-   - README.md-д илүү олон жишээ нэмэгдсэн
-   - API.md-д илүү дэлгэрэнгүй тайлбар нэмэгдсэн
 
 ---
 
@@ -252,11 +244,11 @@
 **Ерөнхий үнэлгээ: ***** (5/5)**
 
 ### Гол давуу талууд:
-- Тогтвортой архитектур
-- Бүрэн тест
-- Сайн баримт бичиг
-- Type safety
-- Performance
+- Тогтвортой архитектур (3 файл: `Router`, `Callback`, `RouterInterface`)
+- Бүрэн тест (54 тест, 103 assertion)
+- Сайн баримт бичиг (PHPDoc, README, API, CHANGELOG, review)
+- Type safety (параметрийн төрөл runtime-д шалгагдана)
+- Бага overhead (cache хэрэглэхгүйгээр `example/index.php`-н 10,000 generate/match benchmark route)
 
 ### Сайжруулах зүйлс:
 - Route caching

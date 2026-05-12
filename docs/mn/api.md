@@ -109,6 +109,41 @@ $url = $router->generate('news-view', ['id' => 10]);
 
 ---
 
+#### `pattern(string $routeName): string`
+
+Route name -> client-side substitution-д бэлэн URL pattern буцаана.
+
+`generate()`-аас ялгаатай нь параметрийн утга шаардахгүй, харин зөвхөн filter prefix-уудыг (`int:`, `uint:`, `float:`, `utf8:`) хасч JavaScript-н `String.replace('{name}', value)` хийхэд бэлэн pattern буцаана.
+
+**Parameters:**
+- `string $routeName` - Маршрутын нэр (`name()` методоор бүртгэсэн)
+
+**Returns:** `string` - Filter prefix хасагдсан pattern
+
+**Throws:**
+- `\OutOfRangeException` - Route name олдохгүй бол
+
+**Example:**
+```php
+$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
+$pattern = $router->pattern('news-view');
+// -> "/news/{id}/{slug}"
+```
+
+**Template + JS хэрэглээ:**
+
+```html
+<script>
+const URL = '{{ "news-view"|pattern }}';
+fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
+</script>
+```
+
+> **Тэмдэглэл:** `|pattern` template filter нь энэхүү package-д суурилуулагдсан биш. Та өөрийн template engine-д filter-ийг бүртгэх хэрэгтэй, жишээ нь
+> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. Дэлгэрэнгүй [README - Client-side URL Pattern](README.md#client-side-url-pattern) хэсгээс үзнэ үү.
+
+---
+
 ## Router
 
 **Namespace:** `codesaur\Router`
@@ -308,6 +343,44 @@ Route name -> URL generate хийнэ (reverse routing).
 $router->GET('/news/{int:id}', ...)->name('news-view');
 $url = $router->generate('news-view', ['id' => 10]); // -> /news/10
 ```
+
+---
+
+#### `pattern(string $ruleName): string`
+
+Route name -> client-side substitution-д бэлэн URL pattern буцаана.
+
+**Parameters:**
+- `string $ruleName` - Route name (`name()` методоор бүртгэсэн)
+
+**Returns:** `string` - `int:`, `uint:`, `float:`, `utf8:` prefix хасагдсан pattern
+
+**Throws:**
+- `\OutOfRangeException` - Route name олдохгүй бол
+
+**Notes:**
+- Параметрийн утгыг шалгахгүй - pattern-ийг хэвээр client-руу буцаана
+- Static хэсгүүд (placeholder-гүй) өөрчлөгдөхгүй
+- Жагсаалтын мөр бүрд edit/delete товч байх AJAX UI-д JavaScript runtime-д утга оруулахад тохиромжтой
+
+**Example:**
+```php
+$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
+$pattern = $router->pattern('news-view');
+// -> '/news/{id}/{slug}'
+```
+
+**Template + JS хэрэглээ:**
+
+```html
+<script>
+const URL = '{{ "news-view"|pattern }}';
+fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
+</script>
+```
+
+> **Тэмдэглэл:** `|pattern` template filter нь энэхүү package-д суурилуулагдсан биш. Та өөрийн template engine-д filter-ийг бүртгэх хэрэгтэй, жишээ нь
+> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. Дэлгэрэнгүй [README - Client-side URL Pattern](README.md#client-side-url-pattern) хэсгээс үзнэ үү.
 
 ---
 

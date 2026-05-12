@@ -351,6 +351,41 @@ class Router implements RouterInterface
     }
 
     /**
+     * Route name -> client-side substitution-д бэлэн URL pattern буцаана.
+     *
+     * generate()-аас ялгаатай нь параметрийн утга шаардахгүй, зөвхөн filter
+     * prefix-уудыг хасч JS-н replace()-д тохирох placeholder pattern буцаана.
+     *
+     * Жишээ:
+     *   $router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
+     *   $router->pattern('news-view');
+     *   // -> '/news/{id}/{slug}'
+     *
+     * Template + JS хэрэглээ:
+     *   const URL = '{{ "news-view"|pattern }}';
+     *   fetch(URL.replace('{id}', 10).replace('{slug}', 'hello'));
+     *
+     * @param string $ruleName Route name (name() методоор бүртгэсэн)
+     * @return string Filter prefix хасагдсан pattern
+     *
+     * @throws \OutOfRangeException Route name олдохгүй бол
+     */
+    public function pattern(string $ruleName): string
+    {
+        if (!isset($this->name_patterns[$ruleName])) {
+            throw new \OutOfRangeException(
+                __CLASS__ . ": Route with rule named [$ruleName] not found"
+            );
+        }
+
+        return \preg_replace(
+            self::FILTERS_REGEX,
+            '{$2}',
+            $this->name_patterns[$ruleName]
+        );
+    }
+
+    /**
      * Бүртгэлтэй маршрутуудын жагсаалтыг буцаана.
      *
      * @return array<string, array<string, Callback>>

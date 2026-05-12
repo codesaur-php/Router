@@ -167,6 +167,49 @@ $router->generate('profile', ['id' => 'abc']);
 
 Result -> `InvalidArgumentException`
 
+### Client-side URL Patterns
+
+For dynamic UIs where the parameter value is only known on the client (e.g. row id from a fetched list), use `pattern()` to emit a placeholder pattern that JavaScript can substitute:
+
+```php
+$pattern = $router->pattern('profile'); // -> /profile/{id}
+```
+
+Filter prefixes (`int:`, `uint:`, `float:`, `utf8:`) are stripped, leaving only the parameter name. Static segments are preserved unchanged.
+
+#### Exposing it to your template engine
+
+`pattern()` is a plain PHP method on the Router instance. To use the `{{ "route-name"|pattern }}` shorthand shown below, register it as a filter/function in your template engine - the Router package itself does not ship with any template integration.
+
+Example with [`codesaur/template`](https://github.com/codesaur-php/Template):
+
+```php
+$template->addFilter('pattern', fn(string $name) => $router->pattern($name));
+```
+
+Once the filter is registered, the template emits the pattern and JS substitutes the value:
+
+```html
+<script>
+const URL_PATTERN = '{{ "profile"|pattern }}';
+fetch(URL_PATTERN.replace('{id}', selectedId));
+</script>
+```
+
+If you prefer not to register a filter, call the method directly when rendering:
+
+```html
+<script>
+const URL_PATTERN = '<?= $router->pattern('profile') ?>';
+fetch(URL_PATTERN.replace('{id}', selectedId));
+</script>
+```
+
+| Method | When to use |
+|--------|-------------|
+| `generate($name, $params)` | Server-side URL with known values - validates and rejects wrong types |
+| `pattern($name)` | Client-side template where JS substitutes the value - no validation |
+
 ---
 
 ## Matching & Dispatching
@@ -287,7 +330,7 @@ Detailed documentation for this package:
 
 ## Running Tests
 
-This project includes unit tests and integration tests using PHPUnit.
+This project includes unit tests using PHPUnit (**54 tests, 103 assertions** — `RouterTest` and `CallbackTest`).
 
 ### Install Dependencies
 

@@ -109,6 +109,41 @@ $url = $router->generate('news-view', ['id' => 10]);
 
 ---
 
+#### `pattern(string $routeName): string`
+
+Returns the route pattern with filter prefixes stripped, suitable for client-side substitution.
+
+Unlike `generate()`, this does not require parameter values; it simply removes the type filter prefixes (`int:`, `uint:`, `float:`, `utf8:`) so that JavaScript can perform `String.replace('{name}', value)` on the result.
+
+**Parameters:**
+- `string $routeName` - Route name (registered with `name()` method)
+
+**Returns:** `string` - Pattern with filter prefixes stripped
+
+**Throws:**
+- `\OutOfRangeException` - If route name is not found
+
+**Example:**
+```php
+$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
+$pattern = $router->pattern('news-view');
+// -> "/news/{id}/{slug}"
+```
+
+**Use case** - server emits pattern, client substitutes the value at runtime:
+
+```html
+<script>
+const URL = '{{ "news-view"|pattern }}';
+fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
+</script>
+```
+
+> **Note:** the `|pattern` template filter is not built into this package. Register it in your template engine, e.g.
+> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. See [README - Client-side URL Patterns](README.md#client-side-url-patterns) for details.
+
+---
+
 ## Router
 
 **Namespace:** `codesaur\Router`
@@ -308,6 +343,44 @@ Generates URL from route name (reverse routing).
 $router->GET('/news/{int:id}', ...)->name('news-view');
 $url = $router->generate('news-view', ['id' => 10]); // -> /news/10
 ```
+
+---
+
+#### `pattern(string $ruleName): string`
+
+Returns the route pattern with filter prefixes stripped, ready for client-side substitution.
+
+**Parameters:**
+- `string $ruleName` - Route name (registered with `name()` method)
+
+**Returns:** `string` - Pattern with `int:`, `uint:`, `float:`, `utf8:` prefixes stripped
+
+**Throws:**
+- `\OutOfRangeException` - If named route is not found
+
+**Notes:**
+- Does not validate parameter values - returns the pattern as-is for the client
+- Static segments (no placeholders) are returned unchanged
+- Useful when JavaScript needs to fill in the parameter value at runtime, e.g. for AJAX edit/delete buttons in a list
+
+**Example:**
+```php
+$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
+$pattern = $router->pattern('news-view');
+// -> '/news/{id}/{slug}'
+```
+
+**Template + JS usage:**
+
+```html
+<script>
+const URL = '{{ "news-view"|pattern }}';
+fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
+</script>
+```
+
+> **Note:** the `|pattern` template filter is not built into this package. Register it in your template engine, e.g.
+> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. See [README - Client-side URL Patterns](README.md#client-side-url-patterns) for details.
 
 ---
 

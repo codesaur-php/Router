@@ -167,6 +167,49 @@ $router->generate('profile', ['id' => 'abc']);
 
 Үр дүн -> `InvalidArgumentException`
 
+### Client-side URL Pattern
+
+Параметрийн утга нь зөвхөн client дээр мэдэгдэх (жишээ нь, fetch хийсэн жагсаалтаас сонгосон row id) динамик UI-д `pattern()` ашиглан JavaScript-д орлуулахад бэлэн placeholder pattern-ыг буцаана:
+
+```php
+$pattern = $router->pattern('profile'); // -> /profile/{id}
+```
+
+Filter prefix-үүд (`int:`, `uint:`, `float:`, `utf8:`) хасагдаж, зөвхөн параметрийн нэр үлдэнэ. Static хэсгүүд хэвээр хадгалагдана.
+
+#### Template engine-д холбох
+
+`pattern()` нь Router instance-н энгийн PHP method. Доор үзүүлсэн `{{ "route-name"|pattern }}` shorthand хэрэглэхийн тулд та өөрийн template engine-д filter/function болгож **гараар бүртгэх ёстой** - Router package өөрөө template integration агуулдаггүй.
+
+Жишээ: [`codesaur/template`](https://github.com/codesaur-php/Template)-д filter бүртгэх:
+
+```php
+$template->addFilter('pattern', fn(string $name) => $router->pattern($name));
+```
+
+Filter бүртгэгдсэний дараа template-д pattern-ийг гаргаж, JS дээр утгыг орлуулна:
+
+```html
+<script>
+const URL_PATTERN = '{{ "profile"|pattern }}';
+fetch(URL_PATTERN.replace('{id}', selectedId));
+</script>
+```
+
+Filter бүртгэхийг хүсэхгүй бол PHP-аар шууд дуудаж болно:
+
+```html
+<script>
+const URL_PATTERN = '<?= $router->pattern('profile') ?>';
+fetch(URL_PATTERN.replace('{id}', selectedId));
+</script>
+```
+
+| Метод | Хэзээ ашиглах |
+|-------|---------------|
+| `generate($name, $params)` | Утга мэдэгдсэн server-side URL - validation хийнэ, буруу төрлийг татгалзана |
+| `pattern($name)` | JS-д утга орлуулах client-side template - validation хийхгүй |
+
 ---
 
 ## Matching & Dispatching
@@ -287,7 +330,7 @@ CI/CD workflow нь `main`, `master`, `develop` салбарууд дээр push
 
 ## Running Tests
 
-Энэ проект нь PHPUnit ашиглан unit test болон integration test-үүд агуулдаг.
+Энэ проект нь PHPUnit ашиглан unit test-үүд агуулдаг (нийт **54 тест, 103 assertion** — `RouterTest` ба `CallbackTest`).
 
 ### Dependencies суулгах
 

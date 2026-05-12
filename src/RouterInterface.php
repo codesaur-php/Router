@@ -67,4 +67,21 @@ interface RouterInterface
      * @throws \InvalidArgumentException Хэрэв параметрийн төрөл буруу бол
      */
     public function generate(string $routeName, array $params): string;
+
+    /**
+     * Route name -> client-side substitution-д бэлэн URL pattern буцаана.
+     *
+     * generate()-аас ялгаатай нь параметрийн утга шаардахгүй, зөвхөн filter
+     * prefix-уудыг хасч JS-н replace()-д тохирох цэвэр placeholder pattern
+     * буцаана.
+     *
+     * Жишээ:
+     *     pattern('news-view')
+     *     -> "/news/{id}/{slug}"
+     *
+     * @param string $routeName Маршрутын нэр
+     * @return string Filter prefix хасагдсан pattern
+     * @throws \OutOfRangeException Хэрэв route name олдохгүй бол
+     */
+    public function pattern(string $routeName): string;
 }

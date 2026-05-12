@@ -98,6 +98,9 @@ if ($callback) {
 
 // URL үүсгэх / Generate URL
 $url = $router->generate('news-view', ['id' => 10]); // -> /news/10
+
+// Client-side substitution-д бэлэн pattern / Pattern for client-side substitution
+$pattern = $router->pattern('news-view'); // -> /news/{id}
 ```
 
 ### Running Tests

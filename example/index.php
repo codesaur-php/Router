@@ -60,13 +60,14 @@ class ExampleController
         echo "<li><a href='{$base}/numeric/7.53'>/numeric/{float}</a></li>";
         echo "<li><a href='{$base}/sum/5/7'>/sum/{int:a}/{uint:b}</a></li>";
         echo "<li><a href='{$base}/generate'>/generate (URL үүсгэх тест)</a></li>";
+        echo "<li><a href='{$base}/pattern-test'>/pattern-test (Client-side pattern тест)</a></li>";
         echo "<li><a href='{$base}/speed/test'>/speed/test (Гүйцэтгэл тест)</a></li>";
         echo "<li><a href='{$base}/сайнуу/Наранхүү'>/сайнуу/Наранхүү (POST хүсэлт байх ёстой)</a></li>";
         echo "</ul>";
     }
 
     /**
-     * Нэр угтах
+     * Greetings
      *
      * Хоёр параметртэй маршрутын жишээ.
      *
@@ -277,6 +278,99 @@ $router->GET('/generate', function () use ($router)
     }
     echo '<br/><b>Гүйцэтгэл тест рүү:</b> <a href="' . $base . '/speed/test">/speed/test</a>';
 });
+
+/* -----------------------------------------------------------------------------
+ *  pattern() - Client-side substitution-д бэлэн URL pattern буцаах
+ *
+ *  generate()-аас ялгаатай нь параметрийн утга шаардахгүй, зөвхөн filter
+ *  prefix-уудыг хасч {param} хэлбэрийн цэвэр placeholder pattern буцаана.
+ *  JavaScript-н .replace() эсвэл template хэлбэрээр хэрэглэхэд тохиромжтой.
+ * ---------------------------------------------------------------------------*/
+$router->GET('/pattern-test', function () use ($router)
+{
+    echo "<h3>Client-side pattern тест (pattern)</h3>";
+    echo "<p><b>pattern()</b> метод нь filter prefix-уудыг хасч цэвэр <code>{param}</code> ";
+    echo "хэлбэрийн placeholder буцаадаг тул JavaScript талд URL-ийг динамикаар үүсгэхэд тохиромжтой.</p>";
+
+    echo "<table border='1' cellpadding='6' cellspacing='0'>";
+    echo "<tr><th>Route name</th><th>pattern() output</th></tr>";
+
+    $rules = ['echo', 'hello', 'sum', 'unicode', 'float', 'test-filters'];
+    foreach ($rules as $rule) {
+        echo '<tr>';
+        echo '<td>' . \htmlspecialchars($rule) . '</td>';
+        echo '<td><code>' . \htmlspecialchars($router->pattern($rule)) . '</code></td>';
+        echo '</tr>';
+    }
+    echo "</table>";
+
+    /* JavaScript хэрэглээний жишээ - PHP template дотор pattern()-ийг
+       <?= ... ?> хэлбэрээр JS string-д оруулж, client талд .replace()-ээр
+       параметр суулгах жишээ. Render хийгдсэний дараах бодит үр дүнг
+       comment хэлбэрээр доор нь харуулна. */
+    echo "<h4>JavaScript хэрэглээний жишээ (PHP template + JS)</h4>";
+    echo "<pre style='background:#f4f4f4;padding:10px;border:1px solid #ddd'>";
+    echo \htmlspecialchars(
+        "<script>\n" .
+        "    // PHP template дотор pattern()-ийг JS string болгон үүсгэнэ:\n" .
+        "    const HELLO_URL = '<?= \$router->pattern('hello') ?>';\n" .
+        "    const SUM_URL   = '<?= \$router->pattern('sum') ?>';\n\n" .
+        "    // Render хийгдсэний дараа JS код дараах байдалтай болно:\n" .
+        "    //   const HELLO_URL = '" . $router->pattern('hello') . "';\n" .
+        "    //   const SUM_URL   = '" . $router->pattern('sum') . "';\n\n" .
+        "    // JavaScript талд параметр суулгах:\n" .
+        "    const url1 = HELLO_URL.replace('{firstname}', 'Temujin').replace('{lastname}', 'Khan');\n" .
+        "    const url2 = SUM_URL.replace('{a}', 5).replace('{b}', 7);\n\n" .
+        "    fetch(url1); // -> /hello/Temujin/Khan\n" .
+        "    fetch(url2); // -> /sum/5/7\n" .
+        "</script>"
+    );
+    echo "</pre>";
+
+    /* Live тест - "Run test" товч дарахад pattern() гаралтыг JS-д .replace()-ээр
+       параметртэй болгож, бодит router endpoint-руу fetch хийж үр дүнг харуулна.
+       Ингэснээр pattern() методын client-side workflow бүхэлдээ ажиллаж байгааг
+       browser дээр шууд харж болно. */
+    $base = \rtrim(\dirname($_SERVER['SCRIPT_NAME']), '/');
+    $helloPattern = $router->pattern('hello');
+    $sumPattern   = $router->pattern('sum');
+
+    echo "<h4>Live тест</h4>";
+    echo "<p>Доорх товчийг дарж pattern() + JS .replace() + fetch() урсгалыг бодит "
+       . "router endpoint дээр ажиллуулна.</p>";
+    echo "<button id='run-pattern-test' style='padding:8px 16px;cursor:pointer;"
+       . "background:#0066cc;color:#fff;border:0;border-radius:4px;font-size:14px'>"
+       . "&#9658; Run test</button>";
+    echo "<pre id='pattern-test-output' style='background:#1e1e1e;color:#dcdcdc;"
+       . "padding:10px;border-radius:4px;margin-top:10px;min-height:60px;"
+       . "font-family:Consolas,monospace'>Үр дүнг энд харуулна...</pre>";
+
+    echo "<script>\n";
+    echo "(function () {\n";
+    echo "    const BASE      = " . \json_encode($base) . ";\n";
+    echo "    const HELLO_URL = " . \json_encode($helloPattern) . ";\n";
+    echo "    const SUM_URL   = " . \json_encode($sumPattern) . ";\n";
+    echo "    const out = document.getElementById('pattern-test-output');\n";
+    echo "    document.getElementById('run-pattern-test').addEventListener('click', async () => {\n";
+    echo "        const url1 = BASE + HELLO_URL.replace('{firstname}', 'Temujin').replace('{lastname}', 'Khan');\n";
+    echo "        const url2 = BASE + SUM_URL.replace('{a}', '5').replace('{b}', '7');\n";
+    echo "        out.textContent = 'Generated URLs:\\n  ' + url1 + '\\n  ' + url2 + '\\n\\nFetching...';\n";
+    echo "        try {\n";
+    echo "            const [r1, r2] = await Promise.all([fetch(url1), fetch(url2)]);\n";
+    echo "            const [t1, t2] = await Promise.all([r1.text(), r2.text()]);\n";
+    echo "            out.textContent =\n";
+    echo "                'Generated URLs:\\n' +\n";
+    echo "                '  ' + url1 + '  -> ' + r1.status + '\\n' +\n";
+    echo "                '  ' + url2 + '  -> ' + r2.status + '\\n\\n' +\n";
+    echo "                'Response 1 (' + url1 + '):\\n' + t1 + '\\n\\n' +\n";
+    echo "                'Response 2 (' + url2 + '):\\n' + t2;\n";
+    echo "        } catch (err) {\n";
+    echo "            out.textContent = 'Алдаа: ' + err.message;\n";
+    echo "        }\n";
+    echo "    });\n";
+    echo "})();\n";
+    echo "</script>";
+})->name('pattern-test');
 
 /* -----------------------------------------------------------------------------
  *  ГҮЙЦЭТГЭЛ ШАЛГАХ - 10,000 generate & match

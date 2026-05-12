@@ -118,6 +118,57 @@ class RouterTest extends TestCase
     }
 
     /**
+     * pattern() — filter prefix-уудыг хасч JS-д бэлэн pattern буцаах
+     */
+    public function testPatternStripsFilterPrefixes(): void
+    {
+        $this->router->GET('/news/{int:id}/{slug}', function () {
+        })->name('news-view');
+
+        $this->assertEquals(
+            '/news/{id}/{slug}',
+            $this->router->pattern('news-view')
+        );
+    }
+
+    /**
+     * pattern() — бүх filter type-уудыг (int, uint, float, utf8, default) зөв
+     * боловсруулах
+     */
+    public function testPatternHandlesAllFilterTypes(): void
+    {
+        $this->router->GET(
+            '/api/{int:id}/{uint:page}/{float:price}/{utf8:name}/{slug}',
+            function () {}
+        )->name('mixed');
+
+        $this->assertEquals(
+            '/api/{id}/{page}/{price}/{name}/{slug}',
+            $this->router->pattern('mixed')
+        );
+    }
+
+    /**
+     * pattern() — параметргүй маршрутыг өөрчлөхгүй буцаах
+     */
+    public function testPatternKeepsStaticRouteUnchanged(): void
+    {
+        $this->router->GET('/about', function () {
+        })->name('about');
+
+        $this->assertEquals('/about', $this->router->pattern('about'));
+    }
+
+    /**
+     * pattern() — олдохгүй route name дээр OutOfRangeException шидэх
+     */
+    public function testPatternThrowsForUnknownRoute(): void
+    {
+        $this->expectException(\OutOfRangeException::class);
+        $this->router->pattern('nonexistent-route');
+    }
+
+    /**
      * Энгийн маршрут тааруулах тест (параметргүй)
      */
     public function testMatchSimpleRoute(): void
