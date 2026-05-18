@@ -330,7 +330,7 @@ CI/CD workflow нь `main`, `master`, `develop` салбарууд дээр push
 
 ## Running Tests
 
-Энэ проект нь PHPUnit ашиглан unit test-үүд агуулдаг (нийт **54 тест, 103 assertion** — `RouterTest` ба `CallbackTest`).
+Энэ проект нь PHPUnit ашиглан unit test-үүд агуулдаг (нийт **54 тест, 103 assertion** - `RouterTest` ба `CallbackTest`).
 
 ### Dependencies суулгах
 

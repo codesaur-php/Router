@@ -330,7 +330,7 @@ Detailed documentation for this package:
 
 ## Running Tests
 
-This project includes unit tests using PHPUnit (**54 tests, 103 assertions** — `RouterTest` and `CallbackTest`).
+This project includes unit tests using PHPUnit (**54 tests, 103 assertions** - `RouterTest` and `CallbackTest`).
 
 ### Install Dependencies
 

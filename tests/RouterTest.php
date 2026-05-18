@@ -118,7 +118,7 @@ class RouterTest extends TestCase
     }
 
     /**
-     * pattern() — filter prefix-уудыг хасч JS-д бэлэн pattern буцаах
+     * pattern() - filter prefix-уудыг хасч JS-д бэлэн pattern буцаах
      */
     public function testPatternStripsFilterPrefixes(): void
     {
@@ -132,7 +132,7 @@ class RouterTest extends TestCase
     }
 
     /**
-     * pattern() — бүх filter type-уудыг (int, uint, float, utf8, default) зөв
+     * pattern() - бүх filter type-уудыг (int, uint, float, utf8, default) зөв
      * боловсруулах
      */
     public function testPatternHandlesAllFilterTypes(): void
@@ -149,7 +149,7 @@ class RouterTest extends TestCase
     }
 
     /**
-     * pattern() — параметргүй маршрутыг өөрчлөхгүй буцаах
+     * pattern() - параметргүй маршрутыг өөрчлөхгүй буцаах
      */
     public function testPatternKeepsStaticRouteUnchanged(): void
     {
@@ -160,7 +160,7 @@ class RouterTest extends TestCase
     }
 
     /**
-     * pattern() — олдохгүй route name дээр OutOfRangeException шидэх
+     * pattern() - олдохгүй route name дээр OutOfRangeException шидэх
      */
     public function testPatternThrowsForUnknownRoute(): void
     {
