@@ -19,9 +19,11 @@
 
 Багц нь дараах 3 үндсэн class-аас бүрдэнэ:
 
-- **Router** - маршрут бүртгэх, тааруулах, URL үүсгэх үндсэн класс  
-- **RouterInterface** - router хэрэгжүүлэх шаардлагуудыг тодорхойлсон интерфэйс  
-- **Callback** - маршрутын callback болон параметрүүдийг хадгалах wrapper класс  
+- **Router** - маршрут бүртгэх, тааруулах, URL үүсгэх үндсэн класс
+- **RouterInterface** - router-ийн бүрэн contract (`match`, `generate`, `pattern`, `getRoutes`).
+  3rd-party router-уудыг adapter-аар ороож ашиглах боломж олгоно.
+- **Route** - immutable value object - `Router::__call()`-ийн буцаах утга.
+  `->name(...)`, `->middleware([...])` гэх мэт fluent API-д ашиглагдана.
 
 ### Дэлгэрэнгүй мэдээлэл
 
@@ -39,9 +41,11 @@ A lightweight, fast, object-oriented routing component. Supports dynamic paramet
 
 The package consists of the following 3 core classes:
 
-- **Router** - main class for registering routes, matching requests, and generating URLs  
-- **RouterInterface** - interface defining the requirements for router implementations  
-- **Callback** - wrapper class for storing route callbacks and their parameters  
+- **Router** - main class for registering routes, matching requests, and generating URLs
+- **RouterInterface** - full router contract (`match`, `generate`, `pattern`, `getRoutes`).
+  Allows third-party routers to be adapted and used in `codesaur/http-application`.
+- **Route** - immutable value object returned by `Router::__call()`. Provides
+  fluent API such as `->name(...)`, `->middleware([...])`.
 
 ### Documentation
 
@@ -88,11 +92,21 @@ $router->GET('/search/{utf8:query}', function(string $query) {
     echo "Search: $query";
 })->name('search');
 
+// Per-route middleware - (pattern, method) scope-той / scoped to the (pattern, method) pair
+$router->POST('/api/users', [UserController::class, 'create'])
+    ->middleware([CsrfMiddleware::class, AuthMiddleware::class])
+    ->name('users.create');
+
+// Append semantics - олон ->middleware() chain цуглуулагдана / chained calls accumulate
+$router->GET('/admin', [AdminController::class, 'dashboard'])
+    ->middleware([AuthMiddleware::class])
+    ->middleware([AdminOnlyMiddleware::class]);
+
 // Маршрут тааруулах / Match route
-$callback = $router->match('/news/10', 'GET');
-if ($callback) {
-    $callable = $callback->getCallable();
-    $params = $callback->getParameters();
+// match() буцаах: [callable, params, middleware] тогтмол 3-tuple эсвэл null
+$result = $router->match('/news/10', 'GET');
+if ($result !== null) {
+    [$callable, $params, $middleware] = $result;
     \call_user_func_array($callable, $params);
 }
 

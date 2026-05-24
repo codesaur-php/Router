@@ -8,15 +8,27 @@ namespace codesaur\Router\Example;
  * -----------------------------------------------------------------------------
  *
  * Энэ файл нь codesaur/router ашиглан маршрутуудыг үүсгэх,
- * тааруулах (match), болон callback гүйцэтгэх жишээг бүрэн харуулна.
+ * тааруулах (match), middleware-ээр боловсруулах, болон callback гүйцэтгэх
+ * жишээг бүрэн харуулна.
  *
  * Багтаасан жишээнүүд:
- *   - GET / POST маршрут бүртгэх
- *   - Динамик параметртэй маршрут авах
- *       {firstname}, {int:id}, {uint:b}, {float:number} гэх мэт
- *   - Нэртэй route -> URL generate хийх
- *   - Controller болон Closure callback хоёрыг хоёуланг нь дэмжих
- *   - 10,000 маршрутын generate & match хурд шалгах тест
+ * - GET / POST маршрут бүртгэх (UTF-8 path-ыг оруулаад)
+ * - Динамик параметртэй маршрут
+ *       {singleword}, {firstname}, {int:a}, {uint:b}, {float:number},
+ *       {utf8:string} гэх мэт бүх filter
+ * - UTF-8 параметр задлан шинжлэх (Unicode code point, hex, байтын урт)
+ * - Controller method болон Closure callback хоёуланг дэмжих
+ * - Нэртэй route -> URL generate хийх
+ * - pattern() метод - client-side substitution-д бэлэн placeholder URL
+ *       (PHP template + JavaScript .replace() live demo)
+ * - Per-route middleware:
+ *       LoggingMiddleware (өмнө/хойно log)
+ *       AuthMiddleware    (?token=secret шалгах, chain зогсоох)
+ *       TimingMiddleware  (хугацаа хэмжих)
+ *       Олон middleware-ийн chain (->middleware() append semantics)
+ *       Onion model execution pipeline (right-to-left wrap)
+ * - 10,000 маршрутын generate & match гүйцэтгэлийн benchmark
+ * - REQUEST -> MATCH -> DISPATCH урсгал (base-path automatic detection)
  *
  * -----------------------------------------------------------------------------
  */
@@ -26,7 +38,6 @@ namespace codesaur\Router\Example;
 
 require '../vendor/autoload.php';
 
-use codesaur\Router\Callback;
 use codesaur\Router\Router;
 
 /**
@@ -63,6 +74,14 @@ class ExampleController
         echo "<li><a href='{$base}/pattern-test'>/pattern-test (Client-side pattern тест)</a></li>";
         echo "<li><a href='{$base}/speed/test'>/speed/test (Гүйцэтгэл тест)</a></li>";
         echo "<li><a href='{$base}/сайнуу/Наранхүү'>/сайнуу/Наранхүү (POST хүсэлт байх ёстой)</a></li>";
+        echo "</ul>";
+
+        echo "<h4>Middleware demo маршрутууд</h4>";
+        echo "<ul>";
+        echo "<li><a href='{$base}/middleware-demo'>/middleware-demo (Logging + Timing chain)</a></li>";
+        echo "<li><a href='{$base}/admin/secret'>/admin/secret (Auth-protected - token хэрэгтэй)</a></li>";
+        echo "<li><a href='{$base}/admin/secret?token=secret'>/admin/secret?token=secret (Auth амжилттай)</a></li>";
+        echo "<li><a href='{$base}/middleware-chain?token=secret'>/middleware-chain?token=secret (3 middleware chain)</a></li>";
         echo "</ul>";
     }
 
@@ -201,13 +220,71 @@ class ExampleController
 }
 
 /* -----------------------------------------------------------------------------
+ *  MIDDLEWARE CLASSES - Жишээ middleware-үүд
+ *
+ *  Эдгээр нь Route::middleware([...]) болон HTTP-Application-ийн middleware
+ *  pipeline-ийг харуулах зорилготой жижиг жишээнүүд.
+ *
+ *  PHP-н __invoke ашиглаж callable interface-ийг хэрэгжүүлсэн - 
+ *  HTTP-Application нь PSR-15 MiddlewareInterface-тэй ч ажилладаг боловч
+ *  энэ example-д PSR dependency-гүйгээр демo хийхийн тулд хялбар закрыт
+ *  callable-ыг ашигласан.
+ * ---------------------------------------------------------------------------*/
+
+/**
+ * LoggingMiddleware - Route execute-аас өмнө/хойно log бичих
+ */
+class LoggingMiddleware
+{
+    public function __invoke(callable $next): void
+    {
+        echo "<p style='color:#888'>[Logging] Маршрут эхэллээ</p>";
+        $next();
+        echo "<p style='color:#888'>[Logging] Маршрут дуусав</p>";
+    }
+}
+
+/**
+ * AuthMiddleware - `?token=secret` query параметр шаардах
+ * Token буруу бол chain зогсооно (next дуудахгүй).
+ */
+class AuthMiddleware
+{
+    public function __invoke(callable $next): void
+    {
+        if (($_GET['token'] ?? '') !== 'secret') {
+            \http_response_code(403);
+            echo "<p style='color:red'>[Auth] 403 Forbidden - URL-руу <code>?token=secret</code> нэмнэ үү</p>";
+            return;  // chain зогсоох - next() дуудахгүй
+        }
+        echo "<p style='color:green'>[Auth] Authenticated [x]</p>";
+        $next();
+    }
+}
+
+/**
+ * TimingMiddleware - Route execute-ийн хугацааг хэмжих
+ */
+class TimingMiddleware
+{
+    public function __invoke(callable $next): void
+    {
+        $start = \hrtime(true);
+        $next();
+        $elapsed = (\hrtime(true) - $start) / 1e6;
+        echo "<p style='color:#0066cc'>[Timing] " . \number_format($elapsed, 3) . " ms</p>";
+    }
+}
+
+/* -----------------------------------------------------------------------------
  *  ROUTES - Маршрут бүртгэх хэсэг
  *
  *  Доорх маршрутууд нь codesaur/router пакетийн бүх боломжуудыг харуулна:
- *  - GET, POST method-ууд
- *  - Динамик параметрүүд ({int:id}, {uint:page}, {float:price}, {slug})
- *  - Нэртэй маршрутууд (named routes)
- *  - Controller болон Closure callback-ууд
+ * - GET, POST method-ууд
+ * - Динамик параметрүүд ({int:id}, {uint:page}, {float:price}, {slug})
+ * - Нэртэй маршрутууд (named routes)
+ * - Per-route middleware (->middleware([...]))
+ * - Controller болон Closure callback-ууд
  * ---------------------------------------------------------------------------*/
 
 $router = new Router();
@@ -247,6 +324,40 @@ $router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
     $sum = $a + $b;
     echo "<br/>$a + $b = $sum";
 })->name('sum');
+
+/* -----------------------------------------------------------------------------
+ *  MIDDLEWARE DEMO ROUTES
+ *
+ *  Route::middleware([...]) болон execution pipeline-ийг харуулах routes:
+ * - /middleware-demo  -> Logging + Timing middleware chain
+ * - /admin/secret     -> Auth + Logging (token шаардах)
+ * - /middleware-chain -> Олон middleware-ийг chain хийсэн жишээ
+ * ---------------------------------------------------------------------------*/
+
+/* Энгийн middleware chain - Logging + Timing */
+$router->GET('/middleware-demo', function () {
+    echo "<h3>Middleware demo</h3>";
+    echo "<p style='color:#000;font-weight:bold'>[Handler] Route handler ажиллав!</p>";
+})
+    ->middleware([LoggingMiddleware::class, TimingMiddleware::class])
+    ->name('middleware-demo');
+
+/* Auth-protected route - ?token=secret шаардана */
+$router->GET('/admin/secret', function () {
+    echo "<h3>Admin зам</h3>";
+    echo "<p style='color:#000;font-weight:bold'>[Handler] Нууц мэдээлэл харагдав</p>";
+})
+    ->middleware([AuthMiddleware::class, LoggingMiddleware::class])
+    ->name('admin-secret');
+
+/* Олон middleware chain - append semantics харуулна */
+$router->GET('/middleware-chain', function () {
+    echo "<h3>Middleware chain demo</h3>";
+    echo "<p style='color:#000;font-weight:bold'>[Handler] Бүх middleware-ийн дунд орсон</p>";
+})
+    ->middleware([TimingMiddleware::class])                    // эхлээд timing
+    ->middleware([LoggingMiddleware::class, AuthMiddleware::class])  // дараа нь logging + auth
+    ->name('middleware-chain');
 
 /* URL generate тест - Нэртэй маршрутуудын URL үүсгэх жишээ */
 $router->GET('/generate', function () use ($router)
@@ -376,9 +487,9 @@ $router->GET('/pattern-test', function () use ($router)
  *  ГҮЙЦЭТГЭЛ ШАЛГАХ - 10,000 generate & match
  *
  *  Энэ маршрут нь router-ийн гүйцэтгэлийг шалгана:
- *  - 10,000 удаа URL generate хийх
- *  - 10,000 удаа маршрут match хийх
- *  - Хугацаа хэмжих
+ * - 10,000 удаа URL generate хийх
+ * - 10,000 удаа маршрут match хийх
+ * - Хугацаа хэмжих
  * ---------------------------------------------------------------------------*/
 $router->GET('/speed/test', function () use ($router)
 {
@@ -417,8 +528,8 @@ $router->GET('/speed/test', function () use ($router)
  *
  *  Энэ хэсэг нь орж ирсэн HTTP request-ийг боловсруулна:
  *  1. URL-ийг цэвэрлэх (query string, trailing slash)
- *  2. Маршрут тааруулах (match)
- *  3. Callback гүйцэтгэх (dispatch)
+ *  2. Маршрут тааруулах (match) -> [callable, params] tuple
+ *  3. Callable гүйцэтгэх (dispatch)
  * ---------------------------------------------------------------------------*/
 
 /* URL-ийг цэвэрлэх - query string болон давхардсан slash-уудыг арилгах */
@@ -435,22 +546,33 @@ if (empty($target_path)) {
 }
 
 /* Маршрут тааруулах - орж ирсэн path болон HTTP method-д тохирох маршрутыг олох */
-$callback = $router->match($target_path, $_SERVER['REQUEST_METHOD']);
+/* match() буцаах: [callable, params, middleware] тогтмол 3-tuple эсвэл null */
+$result = $router->match($target_path, $_SERVER['REQUEST_METHOD']);
 
-if (!$callback instanceof Callback) {
+if ($result === null) {
     \http_response_code(404);
     die("Тохирох маршрут олдсонгүй: [" . \rawurldecode($target_path) . "]");
 }
 
-/* Callback гүйцэтгэх - Closure эсвэл Controller method дуудах */
-$callable = $callback->getCallable();
-$parameters = $callback->getParameters();
+/* Tuple-аас [callable, params, middleware]-ыг гаргаж авах */
+[$callable, $parameters, $middleware] = $result;
 
-if ($callable instanceof \Closure) {
-    \call_user_func_array($callable, $parameters);
-} else {
-    $class = $callable[0];
-    $action = $callable[1];
+/* -----------------------------------------------------------------------------
+ *  ROUTE EXECUTION - Final handler + middleware chain
+ *
+ *  Real HTTP-Application нь PSR-15 onion model-аар middleware-уудыг ажиллуулдаг.
+ *  Энэ example нь PSR dependency-гүйгээр демo хийхийн тулд хялбар closure-based
+ *  chain (right-to-left wrap) ашиглана.
+ * ---------------------------------------------------------------------------*/
+
+/* 1. Эцсийн handler closure - route-ийн callable + parameters */
+$finalHandler = function () use ($callable, $parameters) {
+    if ($callable instanceof \Closure) {
+        \call_user_func_array($callable, $parameters);
+        return;
+    }
+
+    [$class, $action] = $callable;
 
     if (!\class_exists($class)) {
         die("Controller класс олдсонгүй: $class");
@@ -463,4 +585,17 @@ if ($callable instanceof \Closure) {
     }
 
     \call_user_func_array([$controller, $action], $parameters);
+};
+
+/* 2. Middleware chain байгуулах - onion model, right-to-left wrap */
+$handler = $finalHandler;
+foreach (\array_reverse($middleware) as $mw) {
+    $instance = \is_string($mw) ? new $mw() : $mw;
+    $previousHandler = $handler;
+    $handler = function () use ($instance, $previousHandler) {
+        $instance($previousHandler);
+    };
 }
+
+/* 3. Pipeline-ыг execute */
+$handler();

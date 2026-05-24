@@ -1,6 +1,6 @@
 # API Documentation
 
-This documentation provides detailed information about all public APIs of the `codesaur/router` package.
+This document provides a detailed reference for the public API of the `codesaur/router` package.
 
 ---
 
@@ -8,7 +8,7 @@ This documentation provides detailed information about all public APIs of the `c
 
 - [RouterInterface](#routerinterface)
 - [Router](#router)
-- [Callback](#callback)
+- [Route](#route)
 
 ---
 
@@ -16,131 +16,135 @@ This documentation provides detailed information about all public APIs of the `c
 
 **Namespace:** `codesaur\Router`
 
-Core interface that must be implemented by Router.
+The **full router contract** for the codesaur ecosystem. Requires 4 methods:
+- `match()` - request matching
+- `generate()` - reverse routing (route name -> URL)
+- `pattern()` - client-side substitution pattern
+- `getRoutes()` - introspection
+
+Purpose:
+- Provides an **implementation-independent boundary** so HTTP applications and Raptor controllers stay decoupled from any specific router
+- Allows third-party routers (FastRoute, Symfony Routing, AltoRouter, etc.) to be adapted and used with `codesaur/http-application`
+- Keeps concrete Router's internal API (`registerName()`, `registerMiddleware()`) out of the interface
 
 ### Methods
 
-#### `getRoutes(): array`
+#### `match(string $path, string $method): ?array`
 
-Returns a list of all registered routes.
-
-**Returns:** `array<string, array<string, Callback>>`  
-Route array. Structure: `['pattern' => ['METHOD' => Callback object]]`
-
-**Example:**
-```php
-$routes = $router->getRoutes();
-// [
-//     '/news/{int:id}' => [
-//         'GET' => Callback object
-//     ]
-// ]
-```
-
----
-
-#### `merge(RouterInterface $router): void`
-
-Merges routes from another Router into this Router.
+Find a route matching the incoming URL path and HTTP method.
 
 **Parameters:**
-- `RouterInterface $router` - Additional router (routes to merge)
-
-**Returns:** `void`
-
-**Notes:**
-- Usually used to merge module routes.php files with the main router
-- Route names are also merged
-- If routes with the same name exist, the first router's route takes precedence
-
-**Example:**
-```php
-$moduleRouter = new Router();
-$moduleRouter->GET('/module/route', function() { ... });
-
-$mainRouter->merge($moduleRouter);
-```
-
----
-
-#### `match(string $pattern, string $method): Callback|null`
-
-Finds a matching route based on incoming URL pattern and HTTP method.
-
-**Parameters:**
-- `string $pattern` - URL path to search (example: `/news/123`)
+- `string $path` - The URL path to match (e.g. `/news/123`)
 - `string $method` - HTTP method (GET, POST, PUT, DELETE, PATCH...)
 
-**Returns:** `Callback|null`  
-Matching route (Callback object with dynamic parameters already set), or null
+**Returns:** `array|null`
 
-**Example:**
+On a match, returns a **fixed 3-element tuple array**:
+- `[0]` - the callable to execute (Closure or `[Class, 'method']`)
+- `[1]` - parameters extracted from the pattern (`['id' => 10]`, etc.)
+- `[2]` - middleware list (`[]` if none)
+
+Returns `null` when no route matches.
+
+**Example - basic usage:**
 ```php
-$callback = $router->match('/news/10', 'GET');
-if ($callback instanceof Callback) {
-    $params = $callback->getParameters(); // ['id' => 10]
-    $callable = $callback->getCallable();
-    call_user_func_array($callable, $params);
+$result = $router->match('/news/10', 'GET');
+if ($result === null) {
+    http_response_code(404);
+    return;
+}
+
+[$callable, $params, $middleware] = $result;
+call_user_func_array($callable, $params);
+```
+
+**Example - custom router emitting middleware:**
+```php
+class MyRouter implements RouterInterface
+{
+    public function match(string $path, string $method): ?array
+    {
+        return [
+            $callable,                                     // [0] callable
+            ['id' => 10],                                  // [1] params
+            [AuthMiddleware::class, RBACMiddleware::class] // [2] middleware
+        ];
+    }
 }
 ```
 
+> **Integration with `codesaur/http-application`:**
+> HTTP-Application forwards the **entire** match() result as the request's `match` attribute. Additional contextual data should be attached as request attributes from middleware, not as tuple extras.
+
 ---
 
-#### `generate(string $routeName, array $params): string`
+#### `generate(string $routeName, array $params = []): string`
 
-Generates URL based on route name (reverse routing).
+Reverse routing - build a URL from a route name.
 
-**Parameters:**
-- `string $routeName` - Route name (registered with name() method)
-- `array<string, mixed> $params` - Parameters to pass (example: `['id' => 10, 'slug' => 'test']`)
-
-**Returns:** `string` - Generated URL path
+**Returns:** `string` - Generated URL path (raw, not URL-encoded)
 
 **Throws:**
-- `\OutOfRangeException` - If route name is not found
-- `\InvalidArgumentException` - If parameter type is wrong
+- `\OutOfRangeException` - if route name not found
+- `\InvalidArgumentException` - if a parameter type does not match
+
+NOTE: **Encoding contract:** parameter values are substituted **raw** - no percent-encoding. This is intentional and avoids double-encoding when handed to PSR-7 `UriInterface::withPath()`.
 
 **Example:**
 ```php
-$router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]);
-// -> "/news/10"
+$url = $router->generate('news-view', ['id' => 10]);  // '/news/10'
 ```
 
 ---
 
 #### `pattern(string $routeName): string`
 
-Returns the route pattern with filter prefixes stripped, suitable for client-side substitution.
-
-Unlike `generate()`, this does not require parameter values; it simply removes the type filter prefixes (`int:`, `uint:`, `float:`, `utf8:`) so that JavaScript can perform `String.replace('{name}', value)` on the result.
-
-**Parameters:**
-- `string $routeName` - Route name (registered with `name()` method)
+Returns a URL pattern with filter prefixes stripped - ready for client-side substitution.
 
 **Returns:** `string` - Pattern with filter prefixes stripped
 
-**Throws:**
-- `\OutOfRangeException` - If route name is not found
+**Throws:** `\OutOfRangeException` - if route name not found
 
 **Example:**
 ```php
-$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
-$pattern = $router->pattern('news-view');
-// -> "/news/{id}/{slug}"
+$pattern = $router->pattern('news-view');  // '/news/{id}/{slug}'
 ```
 
-**Use case** - server emits pattern, client substitutes the value at runtime:
+---
 
-```html
-<script>
-const URL = '{{ "news-view"|pattern }}';
-fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
-</script>
+#### `getRoutes(): array`
+
+Returns the list of all registered routes (for introspection).
+
+**Structure - 2-tuple `[callable, middleware]` per (pattern, method):**
+```
+[
+    pattern => [
+        method => [
+            [0] callable,    // the handler
+            [1] middleware,  // middleware list registered on this route
+        ]
+    ]
+]
 ```
 
-> **Note:** the `|pattern` template filter is not built into this package. Register it in your template engine, e.g.
-> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. See [README - Client-side URL Patterns](README.md#client-side-url-patterns) for details.
+The pattern is the outer key (it already carries the params info) - no params placeholder is needed inside the entry. Match-time params are only computed by `match()`.
+
+**Use cases:**
+- Listing all routes in an admin panel
+- Auto-generating a sitemap
+- Auto-generating API documentation
+
+**Example:**
+```php
+foreach ($router->getRoutes() as $pattern => $methods) {
+    foreach ($methods as $method => [$callable, $middleware]) {
+        echo "$method $pattern\n";
+    }
+}
+```
+
+**Route names:** Naming is a separate concern - it's not returned by `getRoutes()`. For name introspection, use `generate($name)` to build a URL or `pattern($name)` to get a client-side pattern.
 
 ---
 
@@ -148,471 +152,218 @@ fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
 
 **Namespace:** `codesaur\Router`
 
-Core Router class for codesaur Framework's lightweight routing solution.
+The lightweight Router class of the codesaur ecosystem.
 
 **Implements:** `RouterInterface`
 
 ### Description
 
-This Router performs the following operations:
-- Register routes (using dynamic `__call`: `$router->GET('/news', ...)`)
-- Process routes with parameters like `{int:id}`, `{float:price}`, `{uint:page}`, `{slug}`
-- Find routes matching request path and HTTP method using `match()`
-- Generate URLs from route names
-- Merge other Router instances using `merge()`
+This Router supports:
+- Registering routes via dynamic `__call` (`$router->GET('/news', ...)` syntax)
+- Typed parameters: `{int:id}`, `{float:price}`, `{uint:page}`, `{slug}`, `{utf8:text}`
+- Matching request path + HTTP method via `match()`
+- Reverse routing via `generate()` (name -> URL)
+- Per-route middleware via `Route::middleware()`
 
-Small, stable, can be used standalone without a framework.
+Small, stable, framework-independent, usable standalone.
 
 ### Constants
 
-#### `FILTERS_REGEX`
-
-Regex pattern to detect routes with parameters.
-
-**Value:** `'/\{(int:|uint:|float:|utf8:)?(\w+)}/'`
-
-This regex detects all types of parameters like `{param}`, `{int:id}`, `{uint:page}`, `{float:price}`, `{utf8:text}`.
-
-**Example:** `/news/{int:id}/{slug}`
-
----
-
-#### `INT_REGEX`
-
-Regex pattern for INTEGER type parameters. Allows negative and positive integers.
-
-**Value:** `'(-?\d+)'`
-
----
-
-#### `UNSIGNED_INT_REGEX`
-
-Regex pattern for UNSIGNED INTEGER type parameters. Only allows positive integers (0 and above).
-
-**Value:** `'(\d+)'`
-
----
-
-#### `FLOAT_REGEX`
-
-Regex pattern for FLOAT type parameters. Allows negative and positive decimal numbers.
-
-**Value:** `'(-?\d+|-?\d*\.\d+)'`
-
----
-
-#### `DEFAULT_REGEX`
-
-Regex pattern for DEFAULT string type parameters. Allows URL-safe characters and some special characters.
-
-**Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)'`
-
----
-
-#### `UTF8_REGEX`
-
-Regex pattern for UTF-8 string type parameters. Extends `DEFAULT_REGEX` with multibyte UTF-8 byte range (`\x80-\xFF`) and space character. Matches both percent-encoded and raw UTF-8 characters (Cyrillic, CJK, Arabic, etc.).
-
-**Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)'`
-
-Works on all PHP servers (Apache, Nginx, LiteSpeed, IIS, Caddy, PHP built-in).
-
----
+| Name | Value | Purpose |
+|---|---|---|
+| `FILTERS_REGEX` | `'/\{(int:|uint:|float:|utf8:)?(\w+)}/'` | Detects all `{param}`, `{int:id}`, etc. tokens |
+| `INT_REGEX` | `'(-?\d+)'` | Negative and positive integers |
+| `UNSIGNED_INT_REGEX` | `'(\d+)'` | Positive integers only (0 and up) |
+| `FLOAT_REGEX` | `'(-?\d+|-?\d*\.\d+)'` | Negative and positive decimal numbers |
+| `DEFAULT_REGEX` | `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)'` | URL-safe characters (no spaces) |
+| `UTF8_REGEX` | `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)'` | UTF-8 multibyte (Cyrillic, CJK, etc.) + spaces |
 
 ### Methods
 
-#### `__call(string $method, array $properties): static`
+#### `__call(string $method, array $properties): Route`
 
-Magic method - registers routes like GET, POST, PUT, DELETE, etc.
+Magic method - registers `GET`, `POST`, `PUT`, `DELETE`, etc. routes.
 
 **Parameters:**
-- `string $method` - HTTP method name (GET, POST, PUT, DELETE, PATCH, etc.)
-- `array<mixed> $properties` -
-  - `[0]` => route pattern (string) - route pattern
-  - `[1]` => callback (callable|array) - callback to execute
+- `string $method` - HTTP method name (`GET`, `POST`, ..., or compound `GET_POST`)
+- `array<mixed> $properties` - 
+ - `[0]` => route pattern (string)
+ - `[1]` => callable (Closure or `[Class, 'method']`)
 
-**Returns:** `static` - Returns router object for method chaining
+**Returns:** `Route` - Immutable Route object representing the registered route. Used for fluent APIs like `->name(...)`.
 
 **Throws:**
-- `\InvalidArgumentException` - When route configuration is wrong (pattern or callback is empty/wrong)
-
-**Notes:**
-- This method allows dynamically calling HTTP methods
-- Method must be written in uppercase (GET, POST, PUT, DELETE, PATCH)
+- `\InvalidArgumentException` - if pattern or callback is empty/invalid
 
 **Example:**
 ```php
 $router->GET('/news/{int:id}', [NewsController::class, 'view'])->name('news-view');
 $router->POST('/users', function() { ... });
-$router->PUT('/users/{int:id}', [UserController::class, 'update']);
+$router->GET_POST('/api/data', [ApiController::class, 'data']);  // multiple methods
 ```
 
 ---
 
-#### `name(string $ruleName): void`
+#### `registerName(string $ruleName, string $pattern): void`
 
-Assigns a name to the last registered route.
+**Internal API** for registering a route name -> pattern mapping. Typical usage goes through `Route::name()` automatically.
 
 **Parameters:**
 - `string $ruleName` - Route name (must be unique)
-
-**Returns:** `void`
+- `string $pattern` - The route pattern
 
 **Notes:**
-- Named routes are used to generate URLs with `generate()` method
-- Only one name can be assigned per route
-- If `name()` is called again, it updates the name of the last registered route
+- Normal flow: `$router->GET(...)->name('foo')` - `Route::name()` calls this internally
+- Direct usage: only when you want to attach a name post-hoc, after the route is registered
+- Re-registering the same name overrides the previous pattern
 
 **Example:**
 ```php
+// Standard usage (via Route::name() automatically):
 $router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
+
+// Post-hoc registration:
+$router->GET('/foo', $handler);
+$router->registerName('foo', '/foo');
 ```
 
 ---
 
-#### `match(string $path, string $method): Callback|null`
+#### `registerMiddleware(string $pattern, string $method, array $middleware): void`
 
-Finds a route matching request path and HTTP method.
+**Internal API** for attaching middleware to a (pattern, method) route. Typical usage goes through `Route::middleware([...])` automatically.
 
 **Parameters:**
-- `string $path` - Incoming URL path (example: `/news/10`)
-- `string $method` - HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
-
-**Returns:** `Callback|null` - Matching route (Callback object), or null
+- `string $pattern` - The route pattern
+- `string $method` - HTTP method (supports compound `'GET_POST'`)
+- `list<class-string|callable|\Psr\Http\Server\MiddlewareInterface> $middleware`
 
 **Notes:**
-- This method checks registered routes in order and returns the first match
-- Dynamic parameters are automatically set in the Callback object if found
+- Scope is bound to the **(pattern, method)** pair - isolated from middleware on other methods
+- Compound methods (`GET_POST`) fan out to each constituent method
+- Append semantics - multiple calls accumulate the middleware list
+- Returned in match() tuple at position `[2]`
+- Normal flow: `Route::middleware([...])` calls this internally
+- Direct usage: base class auto-attach, or post-hoc additions
 
 **Example:**
 ```php
-$callback = $router->match('/news/10', 'GET');
-if ($callback instanceof Callback) {
-    $params = $callback->getParameters(); // ['id' => 10]
-    $callable = $callback->getCallable();
-    call_user_func_array($callable, $params);
-}
+// Standard flow:
+$router->POST('/api/users', $handler)
+    ->middleware([CsrfMiddleware::class]);
+
+// Post-hoc:
+$router->GET('/foo', $handler);
+$router->registerMiddleware('/foo', 'GET', [AuthMiddleware::class]);
 ```
 
 ---
 
-#### `merge(RouterInterface $router): void`
+#### `match(string $path, string $method): ?array`
 
-Merges routes from another router into this router.
+Implementation of `RouterInterface::match()`. See the RouterInterface::match section above for the tuple shape and return contract.
 
-**Parameters:**
-- `RouterInterface $router` - Additional router (routes to merge)
-
-**Returns:** `void`
-
-**Notes:**
-- This method is used to merge module routes.php files with the main router
-- Route names are also merged
-- If routes with the same name exist, the first router's route takes precedence
-
-**Example:**
-```php
-$moduleRouter = new Router();
-$moduleRouter->GET('/module/route', function() { ... });
-$mainRouter->merge($moduleRouter);
-```
+**codesaur Router implementation additions:**
+- **HEAD -> GET auto-fallback** (RFC 7231 sec. 4.3.2):
+  If no explicit HEAD route is registered, HEAD requests automatically dispatch to the GET handler.
+  The consumer is responsible for stripping the response body for HEAD requests.
 
 ---
 
 #### `generate(string $ruleName, array $params = []): string`
 
-Generates URL from route name (reverse routing).
-
-**Parameters:**
-- `string $ruleName` - Route name (registered with name() method)
-- `array<string, mixed> $params` - Parameters (example: `['id' => 10, 'slug' => 'test']`)
-
-**Returns:** `string` - Generated URL path
-
-**Throws:**
-- `\OutOfRangeException` - If named route is not found
-- `\InvalidArgumentException` - If parameter type is wrong (example: int required but string passed)
-
-**Notes:**
-- Inserts parameters into named route pattern to generate actual URL
-- Parameter types (int, uint, float) are validated, throws exception if wrong
-
-**Example:**
-```php
-$router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
-```
+Implementation of `RouterInterface::generate()`. See the RouterInterface::generate section above for full details.
 
 ---
 
 #### `pattern(string $ruleName): string`
 
-Returns the route pattern with filter prefixes stripped, ready for client-side substitution.
+Implementation of `RouterInterface::pattern()`. See the RouterInterface::pattern section above for full details.
 
-**Parameters:**
-- `string $ruleName` - Route name (registered with `name()` method)
-
-**Returns:** `string` - Pattern with `int:`, `uint:`, `float:`, `utf8:` prefixes stripped
-
-**Throws:**
-- `\OutOfRangeException` - If named route is not found
-
-**Notes:**
-- Does not validate parameter values - returns the pattern as-is for the client
-- Static segments (no placeholders) are returned unchanged
-- Useful when JavaScript needs to fill in the parameter value at runtime, e.g. for AJAX edit/delete buttons in a list
-
-**Example:**
-```php
-$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
-$pattern = $router->pattern('news-view');
-// -> '/news/{id}/{slug}'
-```
-
-**Template + JS usage:**
-
+**Template + JS usage example:**
 ```html
 <script>
-const URL = '{{ "news-view"|pattern }}';
+const URL = '<?= $router->pattern('news-view') ?>';
 fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
 </script>
 ```
 
-> **Note:** the `|pattern` template filter is not built into this package. Register it in your template engine, e.g.
-> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. See [README - Client-side URL Patterns](README.md#client-side-url-patterns) for details.
-
 ---
 
-#### `getRoutes(): array`
-
-Returns a list of all registered routes.
-
-**Returns:** `array<string, array<string, Callback>>`
-
-**Example:**
-```php
-$routes = $router->getRoutes();
-```
-
----
-
-## Callback
+## Route
 
 **Namespace:** `codesaur\Router`
 
-Small wrapper class that stores callable (function, method, closure, etc.) and parameters to pass to that callable for each router route.
+Immutable value object returned by `Router::__call()` when registering a route. Provides the `->name(...)` fluent API.
 
 ### Description
 
-This class is used to send dynamic parameters during routing.
+The Route class exists to keep the Router **stateless**:
+- A registered route carries its own pattern context, so `name()` and `middleware()` fluent methods operate without ambiguity
+- PHP 8.2 `readonly` class - immutable
 
-### Constructor
+### Properties
 
-#### `__construct(callable|array $callable)`
+#### `public readonly string $pattern`
 
-**Parameters:**
-- `callable|array{class-string, string} $callable` - Callable object to execute
-  - Function: `'function_name'`
-  - Closure: `function() { ... }`
-  - Static method: `[ClassName::class, 'methodName']`
-  - Instance method: `[$object, 'methodName']`
-
-**Example:**
-```php
-// Closure
-$callback = new Callback(function($id) {
-    return "ID: $id";
-});
-
-// Controller method
-$callback = new Callback([UserController::class, 'view']);
-
-// Function
-$callback = new Callback('my_function');
-```
-
----
+The pattern of this route (e.g. `/news/{int:id}`). Read-only, cannot be modified.
 
 ### Methods
 
-#### `getCallable(): callable|array`
+#### `name(string $ruleName): self`
 
-Returns the registered callable.
-
-**Returns:** `callable|array{class-string, string}` - Callable object to execute
-
-**Example:**
-```php
-$callable = $callback->getCallable();
-
-if ($callable instanceof \Closure) {
-    // Closure
-    call_user_func_array($callable, $params);
-} else if (is_array($callable)) {
-    // Controller method
-    [$class, $method] = $callable;
-    $controller = new $class();
-    call_user_func_array([$controller, $method], $params);
-} else {
-    // Function
-    call_user_func_array($callable, $params);
-}
-```
-
----
-
-#### `getParameters(): array`
-
-Returns parameters to pass from the route.
-
-**Returns:** `array<string, mixed>` - Parameter array (key is parameter name)
-
-**Notes:**
-- Parameters are values extracted from dynamic parts of route pattern
-- Example: For pattern `/news/{int:id}`, if path `/news/10` matches, returns `['id' => 10]`
-
-**Example:**
-```php
-$params = $callback->getParameters();
-// ['id' => 10, 'slug' => 'test-article']
-```
-
----
-
-#### `setParameters(array $parameters): void`
-
-Sets parameters to pass to callable.
+Attach a name to this route.
 
 **Parameters:**
-- `array<string, mixed> $parameters` - Parameters (key is parameter name)
+- `string $ruleName` - Route name (must be unique)
 
-**Returns:** `void`
+**Returns:** `self` - This Route object (for chaining)
 
 **Notes:**
-- This method is usually called by `Router::match()` method to store parameters extracted from route pattern in Callback object
+- Strict mode - reassigning the same name to a different pattern throws `\LogicException`
+- Internally calls `Router::registerName()`
 
 **Example:**
 ```php
-$callback->setParameters(['id' => 10, 'slug' => 'test']);
+$router->GET('/news/{int:id}', $handler)->name('news.view');
 ```
 
----
+#### `middleware(array $middleware): self`
 
-## Route Parameter Types
+Attach a **list of middleware** to this route. They run before the route handler.
 
-Router supports the following parameter types:
+**Parameters:**
+- `list<class-string|callable|\Psr\Http\Server\MiddlewareInterface> $middleware` - Middleware list
 
-| Type | Pattern | Example | Description | Regex |
-|------|---------|-------|---------|-------|
-| Integer | `{int:id}` | `/post/{int:id}` | Allows negative numbers | `(-?\d+)` |
-| Unsigned Integer | `{uint:page}` | `/users/{uint:page}` | Only positive integers (0 and above) | `(\d+)` |
-| Float | `{float:num}` | `/price/{float:num}` | 1.4, -2.56, etc. | `(-?\d+|-?\d*\.\d+)` |
-| String (default) | `{slug}` | `/tag/{slug}` | A-z0-9 and URL-safe characters | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@-]+)` |
-| UTF-8 String | `{utf8:text}` | `/search/{utf8:query}` | Multibyte UTF-8 characters (Cyrillic, CJK, Arabic, etc.) | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@ \x80-\xFF-]+)` |
+**Returns:** `self` - This Route object (for chaining)
+
+**Supported middleware types:**
+- **class-string** - PSR-15 MiddlewareInterface class (HTTP-Application instantiates at runtime)
+- **callable / Closure** - function with signature `function($request, $handler)`
+- **MiddlewareInterface instance** - pre-instantiated object
+
+**Notes:**
+- Append semantics - multiple calls accumulate the middleware list
+- Internally calls `Router::registerMiddleware()`
+- Returned in match() tuple at position `[2]`
 
 **Example:**
 ```php
-// Using multiple parameter types
-$router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
-    echo "$a + $b = " . ($a + $b);
-});
+// Simple usage
+$router->POST('/api/users', $handler)
+    ->middleware([CsrfMiddleware::class, RBACMiddleware::class]);
 
-// Float parameter
-$router->GET('/price/{float:amount}', function (float $amount) {
-    echo "Price: $amount";
-});
+// Append semantics
+$router->GET('/admin', $handler)
+    ->middleware([AuthMiddleware::class])
+    ->middleware([AdminOnlyMiddleware::class]);
+// Registered: [Auth, AdminOnly]
 
-// String parameter (default)
-$router->GET('/tag/{slug}', function (string $slug) {
-    echo "Tag: $slug";
-});
-
-// UTF-8 parameter (Cyrillic, CJK, Arabic, etc.)
-$router->GET('/search/{utf8:query}', function (string $query) {
-    echo "Search: $query";
-});
-```
-
-**Note:**
-- Parameter name must match between route pattern and callback function parameter name
-- Parameter type is validated when using `generate()` method
-
----
-
-## HTTP Methods
-
-Router supports the following HTTP methods:
-- **GET** - Read data
-- **POST** - Create new data
-- **PUT** - Full update
-- **DELETE** - Delete
-- **PATCH** - Partial update
-
-**Example:**
-```php
-// GET - Get data
-$router->GET('/users', function() {
-    return getAllUsers();
-});
-
-// POST - Create new user
-$router->POST('/users', function() {
-    return createUser($_POST);
-});
-
-// PUT - Update user
-$router->PUT('/users/{int:id}', function(int $id) {
-    return updateUser($id, $_POST);
-});
-
-// DELETE - Delete user
-$router->DELETE('/users/{int:id}', function(int $id) {
-    return deleteUser($id);
-});
-
-// PATCH - Partial update
-$router->PATCH('/users/{int:id}', function(int $id) {
-    return partialUpdateUser($id, $_POST);
-});
-```
-
-**RESTful API example:**
-```php
-// Users resource
-$router->GET('/users', [UserController::class, 'index'])->name('users.index');
-$router->GET('/users/{int:id}', [UserController::class, 'show'])->name('users.show');
-$router->POST('/users', [UserController::class, 'store'])->name('users.store');
-$router->PUT('/users/{int:id}', [UserController::class, 'update'])->name('users.update');
-$router->DELETE('/users/{int:id}', [UserController::class, 'destroy'])->name('users.destroy');
-```
-
----
-
-## Exceptions
-
-### `\InvalidArgumentException`
-
-Thrown when route configuration is wrong or parameter type is incorrect.
-
-**Example:**
-```php
-try {
-    $router->generate('profile', ['id' => 'abc']); // int required
-} catch (\InvalidArgumentException $e) {
-    // Parameter type is wrong
-}
-```
-
-### `\OutOfRangeException`
-
-Thrown when named route is not found.
-
-**Example:**
-```php
-try {
-    $router->generate('non-existent-route', []);
-} catch (\OutOfRangeException $e) {
-    // Route not found
-}
+// Closure middleware
+$router->GET('/test', $handler)
+    ->middleware([
+        function($req, $handler) {
+            return $handler->handle($req->withAttribute('test', true));
+        }
+    ]);
 ```

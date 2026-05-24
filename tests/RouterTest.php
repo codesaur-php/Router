@@ -4,7 +4,7 @@ namespace codesaur\Router\Tests;
 
 use PHPUnit\Framework\TestCase;
 
-use codesaur\Router\Callback;
+use codesaur\Router\Route;
 use codesaur\Router\Router;
 
 /**
@@ -13,7 +13,7 @@ use codesaur\Router\Router;
  * Энэ тест класс нь Router классын бүх функцүүдийг шалгана:
  * - Маршрут бүртгэх (GET, POST, PUT, DELETE)
  * - Нэртэй маршрут үүсгэх
- * - Маршрут тааруулах (match)
+ * - Маршрут тааруулах (match) - буцаах төрөл: ?array tuple [callable, params]
  * - URL үүсгэх (generate)
  * - Router нэгтгэх (merge)
  * - Параметрийн төрөл шалгах (int, uint, float, string)
@@ -35,19 +35,23 @@ class RouterTest extends TestCase
 
     /**
      * Энгийн GET маршрут бүртгэх тест
+     * Shape: $routes[pattern][method] = [callable, middleware]
      */
     public function testRegisterSimpleGetRoute(): void
     {
-        $callback = function () {
+        $callable = function () {
             return 'Hello';
         };
 
-        $this->router->GET('/hello', $callback);
+        $this->router->GET('/hello', $callable);
         $routes = $this->router->getRoutes();
 
         $this->assertArrayHasKey('/hello', $routes);
         $this->assertArrayHasKey('GET', $routes['/hello']);
-        $this->assertInstanceOf(Callback::class, $routes['/hello']['GET']);
+        $entry = $routes['/hello']['GET'];
+        $this->assertCount(2, $entry);
+        $this->assertSame($callable, $entry[0]);     // callable
+        $this->assertSame([], $entry[1]);            // middleware (хоосон)
     }
 
     /**
@@ -55,15 +59,16 @@ class RouterTest extends TestCase
      */
     public function testRegisterPostRoute(): void
     {
-        $callback = function () {
+        $callable = function () {
             return 'POST response';
         };
 
-        $this->router->POST('/users', $callback);
+        $this->router->POST('/users', $callable);
         $routes = $this->router->getRoutes();
 
         $this->assertArrayHasKey('/users', $routes);
         $this->assertArrayHasKey('POST', $routes['/users']);
+        $this->assertSame($callable, $routes['/users']['POST'][0]);
     }
 
     /**
@@ -71,19 +76,21 @@ class RouterTest extends TestCase
      */
     public function testRegisterPutAndDeleteRoutes(): void
     {
-        $putCallback = function () {
+        $putCallable = function () {
             return 'PUT';
         };
-        $deleteCallback = function () {
+        $deleteCallable = function () {
             return 'DELETE';
         };
 
-        $this->router->PUT('/users/{int:id}', $putCallback);
-        $this->router->DELETE('/users/{int:id}', $deleteCallback);
+        $this->router->PUT('/users/{int:id}', $putCallable);
+        $this->router->DELETE('/users/{int:id}', $deleteCallable);
 
         $routes = $this->router->getRoutes();
         $this->assertArrayHasKey('PUT', $routes['/users/{int:id}']);
         $this->assertArrayHasKey('DELETE', $routes['/users/{int:id}']);
+        $this->assertSame($putCallable, $routes['/users/{int:id}']['PUT'][0]);
+        $this->assertSame($deleteCallable, $routes['/users/{int:id}']['DELETE'][0]);
     }
 
     /**
@@ -170,18 +177,22 @@ class RouterTest extends TestCase
 
     /**
      * Энгийн маршрут тааруулах тест (параметргүй)
+     * match() буцаах төрөл: тогтмол [callable, params, middleware] 3-tuple
      */
     public function testMatchSimpleRoute(): void
     {
-        $callback = function () {
+        $callable = function () {
             return 'matched';
         };
 
-        $this->router->GET('/home', $callback);
+        $this->router->GET('/home', $callable);
         $result = $this->router->match('/home', 'GET');
 
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals($callback, $result->getCallable());
+        $this->assertIsArray($result);
+        $this->assertCount(3, $result);
+        $this->assertSame($callable, $result[0]);
+        $this->assertSame([], $result[1]);
+        $this->assertSame([], $result[2]);  // middleware хоосон
     }
 
     /**
@@ -217,8 +228,8 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/user/john', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(['username' => 'john'], $result->getParameters());
+        $this->assertIsArray($result);
+        $this->assertEquals(['username' => 'john'], $result[1]);
     }
 
     /**
@@ -230,9 +241,9 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/news/123', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(['id' => 123], $result->getParameters());
-        $this->assertIsInt($result->getParameters()['id']);
+        $this->assertIsArray($result);
+        $this->assertEquals(['id' => 123], $result[1]);
+        $this->assertIsInt($result[1]['id']);
     }
 
     /**
@@ -244,8 +255,8 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/number/-42', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(['value' => -42], $result->getParameters());
+        $this->assertIsArray($result);
+        $this->assertEquals(['value' => -42], $result[1]);
     }
 
     /**
@@ -257,8 +268,8 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/page/5', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(['page' => 5], $result->getParameters());
+        $this->assertIsArray($result);
+        $this->assertEquals(['page' => 5], $result[1]);
     }
 
     /**
@@ -270,9 +281,9 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/price/19.99', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(['amount' => 19.99], $result->getParameters());
-        $this->assertIsFloat($result->getParameters()['amount']);
+        $this->assertIsArray($result);
+        $this->assertEquals(['amount' => 19.99], $result[1]);
+        $this->assertIsFloat($result[1]['amount']);
     }
 
     /**
@@ -284,8 +295,8 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/value/-3.14', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(['num' => -3.14], $result->getParameters());
+        $this->assertIsArray($result);
+        $this->assertEquals(['num' => -3.14], $result[1]);
     }
 
     /**
@@ -297,8 +308,8 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/user/10/post/my-first-post', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $params = $result->getParameters();
+        $this->assertIsArray($result);
+        $params = $result[1];
         $this->assertEquals(10, $params['id']);
         $this->assertEquals('my-first-post', $params['slug']);
     }
@@ -313,8 +324,8 @@ class RouterTest extends TestCase
 
         $encoded = rawurlencode('hello world');
         $result = $this->router->match('/search/' . $encoded, 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals('hello world', $result->getParameters()['query']);
+        $this->assertIsArray($result);
+        $this->assertEquals('hello world', $result[1]['query']);
     }
 
     /**
@@ -426,47 +437,6 @@ class RouterTest extends TestCase
     }
 
     /**
-     * Router нэгтгэх тест
-     */
-    public function testMergeRouters(): void
-    {
-        $router1 = new Router();
-        $router1->GET('/route1', function () {
-        });
-
-        $router2 = new Router();
-        $router2->GET('/route2', function () {
-        });
-
-        $this->router->merge($router1);
-        $this->router->merge($router2);
-
-        $routes = $this->router->getRoutes();
-        $this->assertArrayHasKey('/route1', $routes);
-        $this->assertArrayHasKey('/route2', $routes);
-    }
-
-    /**
-     * Router нэгтгэх тест (route name-уудтай)
-     */
-    public function testMergeRoutersWithNamedRoutes(): void
-    {
-        $router1 = new Router();
-        $router1->GET('/route1', function () {
-        })->name('route1');
-
-        $router2 = new Router();
-        $router2->GET('/route2', function () {
-        })->name('route2');
-
-        $this->router->merge($router1);
-        $this->router->merge($router2);
-
-        $this->assertEquals('/route1', $this->router->generate('route1'));
-        $this->assertEquals('/route2', $this->router->generate('route2'));
-    }
-
-    /**
      * Бүртгэлтэй маршрутуудын жагсаалт авах тест
      */
     public function testGetRoutes(): void
@@ -484,6 +454,46 @@ class RouterTest extends TestCase
     }
 
     /**
+     * getRoutes() нь middleware-ыг entry[1]-д буцаах ёстой
+     */
+    public function testGetRoutesIncludesMiddleware(): void
+    {
+        $this->router->GET('/admin', function () {
+        })->middleware(['AuthMiddleware', 'CsrfMiddleware']);
+        $this->router->GET('/public', function () {
+        });
+
+        $routes = $this->router->getRoutes();
+
+        $this->assertEquals(['AuthMiddleware', 'CsrfMiddleware'], $routes['/admin']['GET'][1]);
+        $this->assertSame([], $routes['/public']['GET'][1]);
+    }
+
+    /**
+     * getRoutes() entry shape: [callable, middleware]
+     */
+    public function testGetRoutesEntryShape(): void
+    {
+        $callable = function () {
+        };
+        $this->router->GET('/test', $callable)
+            ->name('test')
+            ->middleware(['MwA']);
+
+        $routes = $this->router->getRoutes();
+        $entry = $routes['/test']['GET'];
+
+        $this->assertCount(2, $entry);
+        $this->assertSame($callable, $entry[0]);     // [0] callable
+        $this->assertSame(['MwA'], $entry[1]);        // [1] middleware
+
+        // Destructuring ажиллах ёстой
+        [$cb, $mw] = $entry;
+        $this->assertSame($callable, $cb);
+        $this->assertSame(['MwA'], $mw);
+    }
+
+    /**
      * Controller callback ашиглах тест
      */
     public function testControllerCallback(): void
@@ -491,8 +501,8 @@ class RouterTest extends TestCase
         $this->router->GET('/test', [TestController::class, 'index']);
 
         $result = $this->router->match('/test', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $callable = $result->getCallable();
+        $this->assertIsArray($result);
+        $callable = $result[0];
         $this->assertIsArray($callable);
         $this->assertEquals(TestController::class, $callable[0]);
         $this->assertEquals('index', $callable[1]);
@@ -515,8 +525,8 @@ class RouterTest extends TestCase
 
         // Таарах маршрут шалгах
         $result = $this->router->match('/closure', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertInstanceOf(\Closure::class, $result->getCallable());
+        $this->assertIsArray($result);
+        $this->assertInstanceOf(\Closure::class, $result[0]);
     }
 
     /**
@@ -532,15 +542,15 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/user/10/', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(['id' => 10], $result->getParameters());
+        $this->assertIsArray($result);
+        $this->assertEquals(['id' => 10], $result[1]);
 
         // Энгийн маршрут - trailing slash байхгүй байх ёстой
         $this->router->GET('/home', function () {
         });
 
         $result = $this->router->match('/home', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
+        $this->assertIsArray($result);
 
         $result = $this->router->match('/home/', 'GET');
         $this->assertNull($result, 'Энгийн маршрут trailing slash-тэй таарах ёсгүй');
@@ -559,8 +569,8 @@ class RouterTest extends TestCase
         $getResult = $this->router->match('/api/data', 'GET');
         $postResult = $this->router->match('/api/data', 'POST');
 
-        $this->assertInstanceOf(Callback::class, $getResult);
-        $this->assertInstanceOf(Callback::class, $postResult);
+        $this->assertIsArray($getResult);
+        $this->assertIsArray($postResult);
     }
 
     /**
@@ -573,8 +583,8 @@ class RouterTest extends TestCase
 
         $encoded = rawurlencode('Наранхүү');
         $result = $this->router->match('/hello/' . $encoded, 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals('Наранхүү', $result->getParameters()['name']);
+        $this->assertIsArray($result);
+        $this->assertEquals('Наранхүү', $result[1]['name']);
     }
 
     /**
@@ -587,8 +597,8 @@ class RouterTest extends TestCase
 
         $encoded = rawurlencode('Монгол');
         $result = $this->router->match('/search/' . $encoded, 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals('Монгол', $result->getParameters()['query']);
+        $this->assertIsArray($result);
+        $this->assertEquals('Монгол', $result[1]['query']);
     }
 
     /**
@@ -600,8 +610,8 @@ class RouterTest extends TestCase
         });
 
         $result = $this->router->match('/search/Монгол', 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals('Монгол', $result->getParameters()['query']);
+        $this->assertIsArray($result);
+        $this->assertEquals('Монгол', $result[1]['query']);
     }
 
     /**
@@ -614,8 +624,8 @@ class RouterTest extends TestCase
 
         $encoded = rawurlencode('Сайн байна уу');
         $result = $this->router->match('/search/' . $encoded, 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals('Сайн байна уу', $result->getParameters()['query']);
+        $this->assertIsArray($result);
+        $this->assertEquals('Сайн байна уу', $result[1]['query']);
     }
 
     /**
@@ -628,9 +638,9 @@ class RouterTest extends TestCase
 
         $encoded = rawurlencode('Наранхүү');
         $result = $this->router->match('/user/42/' . $encoded, 'GET');
-        $this->assertInstanceOf(Callback::class, $result);
-        $this->assertEquals(42, $result->getParameters()['id']);
-        $this->assertEquals('Наранхүү', $result->getParameters()['name']);
+        $this->assertIsArray($result);
+        $this->assertEquals(42, $result[1]['id']);
+        $this->assertEquals('Наранхүү', $result[1]['name']);
     }
 
     /**
@@ -655,5 +665,352 @@ class RouterTest extends TestCase
 
         $result = $this->router->match('/echo/Монгол', 'GET');
         $this->assertNull($result);
+    }
+
+    /**
+     * HEAD request -> GET handler автомат fallback (RFC 7231 sec. 4.3.2)
+     *
+     * Explicit HEAD route байхгүй бол GET handler-ыг автоматаар буцаах ёстой.
+     */
+    public function testHeadFallsBackToGet(): void
+    {
+        $getHandler = function () {
+            return 'GET body';
+        };
+
+        $this->router->GET('/resource', $getHandler);
+
+        // HEAD request -> GET handler-д очно
+        $result = $this->router->match('/resource', 'HEAD');
+        $this->assertIsArray($result);
+        $this->assertSame($getHandler, $result[0]);
+    }
+
+    /**
+     * Explicit HEAD route нь GET fallback-аас өмнө таарна
+     *
+     * Хэрэв developer тусгайлан HEAD route бүртгэсэн бол GET-ээс илүү давуу талтай.
+     */
+    public function testExplicitHeadTakesPrecedenceOverGetFallback(): void
+    {
+        $getHandler = function () {
+            return 'GET body';
+        };
+        $headHandler = function () {
+            return 'HEAD only';
+        };
+
+        $this->router->GET('/resource', $getHandler);
+        $this->router->HEAD('/resource', $headHandler);
+
+        $result = $this->router->match('/resource', 'HEAD');
+        $this->assertIsArray($result);
+        $this->assertSame($headHandler, $result[0], 'Explicit HEAD ёстой давуу талтай байна');
+    }
+
+    /**
+     * HEAD fallback нь параметртэй route дээр ч ажиллана
+     */
+    public function testHeadFallbackPreservesParameters(): void
+    {
+        $this->router->GET('/news/{int:id}', function () {
+        });
+
+        $result = $this->router->match('/news/42', 'HEAD');
+        $this->assertIsArray($result);
+        $this->assertEquals(['id' => 42], $result[1]);
+        $this->assertIsInt($result[1]['id']);
+    }
+
+    /**
+     * POST-only route-д HEAD таарахгүй (null буцаана)
+     *
+     * HEAD нь зөвхөн GET-ээс fallback хийгдэх ёстой, бусад method-аас биш.
+     */
+    public function testHeadDoesNotFallbackToPost(): void
+    {
+        $this->router->POST('/api/data', function () {
+        });
+
+        $result = $this->router->match('/api/data', 'HEAD');
+        $this->assertNull($result, 'POST-only route-д HEAD таарах ёсгүй');
+    }
+
+    /**
+     * Route бүртгэхэд Route object буцаах ёстой
+     */
+    public function testRegisteringRouteReturnsRouteObject(): void
+    {
+        $route = $this->router->GET('/test', function () {
+        });
+
+        $this->assertInstanceOf(Route::class, $route);
+        $this->assertEquals('/test', $route->pattern);
+    }
+
+    /**
+     * Route::name() дуудлага нь Router-д нэрийг бүртгэх ёстой
+     */
+    public function testRouteNameRegistersNameInRouter(): void
+    {
+        $this->router->GET('/news/{int:id}', function () {
+        })->name('news.view');
+
+        $url = $this->router->generate('news.view', ['id' => 42]);
+        $this->assertEquals('/news/42', $url);
+    }
+
+    /**
+     * Route::name() нь Route өөрийгөө буцаах ёстой (chainable)
+     */
+    public function testRouteNameReturnsSelfForChaining(): void
+    {
+        $route = $this->router->GET('/foo', function () {
+        });
+
+        $returned = $route->name('foo');
+        $this->assertSame($route, $returned);
+    }
+
+    /**
+     * Олон нэр нэг pattern-руу заах нь exception шидэхгүй (idempotent registration)
+     */
+    public function testMultipleNamesOnSamePatternAllResolveToIt(): void
+    {
+        $this->router->GET('/about', function () {
+        })->name('about')->name('about.page')->name('static.about');
+
+        $this->assertEquals('/about', $this->router->generate('about'));
+        $this->assertEquals('/about', $this->router->generate('about.page'));
+        $this->assertEquals('/about', $this->router->generate('static.about'));
+    }
+
+    /**
+     * Router::registerName() public API нь шууд дуудах боломжтой
+     */
+    public function testRegisterNamePublicApi(): void
+    {
+        $this->router->GET('/foo', function () {
+        });
+
+        // Pattern-ыг шууд бүртгэх
+        $this->router->registerName('foo', '/foo');
+
+        $this->assertEquals('/foo', $this->router->generate('foo'));
+    }
+
+    /**
+     * Ижил нэрийг өөр pattern-д оноох гэвэл strict mode-ийн дагуу exception шиднэ
+     */
+    public function testDuplicateNameOnDifferentPatternThrows(): void
+    {
+        $this->router->GET('/users', function () {
+        })->name('users');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Route name [users] is already registered');
+
+        $this->router->GET('/admin', function () {
+        })->name('users');
+    }
+
+    /**
+     * Ижил нэрийг ижил pattern-д давтан оноох нь idempotent (exception шидэхгүй)
+     */
+    public function testDuplicateNameOnSamePatternIsIdempotent(): void
+    {
+        $this->router->GET('/users', function () {
+        })->name('users')->name('users');
+
+        $this->assertEquals('/users', $this->router->generate('users'));
+    }
+
+    /**
+     * Route-ийн pattern property нь readonly байх ёстой
+     */
+    public function testRoutePatternIsReadonly(): void
+    {
+        $route = $this->router->GET('/test', function () {
+        });
+
+        $this->expectException(\Error::class);
+        // PHP 8.2 readonly class - property assignment runtime error
+        $route->pattern = '/changed';
+    }
+
+    /**
+     * Route::middleware() нь Router-д middleware бүртгэх ёстой
+     * Буцаах нь $result[2] позицийн дагуу
+     */
+    public function testRouteMiddlewareRegistersInRouter(): void
+    {
+        $this->router->GET('/admin', function () {
+        })->middleware(['AuthMiddleware', 'CsrfMiddleware']);
+
+        $result = $this->router->match('/admin', 'GET');
+        $this->assertIsArray($result);
+        $this->assertCount(3, $result);
+        $this->assertEquals(['AuthMiddleware', 'CsrfMiddleware'], $result[2]);
+    }
+
+    /**
+     * Middleware байхгүй route-д $result[2] нь хоосон array
+     */
+    public function testRouteWithoutMiddlewareHasEmptyArray(): void
+    {
+        $this->router->GET('/public', function () {
+        });
+
+        $result = $this->router->match('/public', 'GET');
+        $this->assertIsArray($result);
+        $this->assertCount(3, $result);
+        $this->assertSame([], $result[2]);
+    }
+
+    /**
+     * Олон `->middleware()` chain нь append semantics
+     */
+    public function testMultipleMiddlewareCallsAppend(): void
+    {
+        $this->router->GET('/x', function () {
+        })
+            ->middleware(['A'])
+            ->middleware(['B', 'C']);
+
+        $result = $this->router->match('/x', 'GET');
+        $this->assertEquals(['A', 'B', 'C'], $result[2]);
+    }
+
+    /**
+     * Pattern-уудын middleware тус тусдаа isolated байх ёстой
+     */
+    public function testMiddlewareIsolationPerPattern(): void
+    {
+        $this->router->GET('/a', function () {
+        })->middleware(['MwA']);
+
+        $this->router->GET('/b', function () {
+        })->middleware(['MwB']);
+
+        $resultA = $this->router->match('/a', 'GET');
+        $resultB = $this->router->match('/b', 'GET');
+
+        $this->assertEquals(['MwA'], $resultA[2]);
+        $this->assertEquals(['MwB'], $resultB[2]);
+    }
+
+    /**
+     * Параметртэй route-ийн middleware match-д хэвээр дамжих
+     */
+    public function testParameterizedRouteMiddleware(): void
+    {
+        $this->router->GET('/users/{int:id}', function () {
+        })->middleware(['AuthMiddleware']);
+
+        $result = $this->router->match('/users/42', 'GET');
+        $this->assertEquals(['AuthMiddleware'], $result[2]);
+        $this->assertEquals(['id' => 42], $result[1]);
+    }
+
+    /**
+     * HEAD fallback нь GET handler-ийн middleware-ыг өвлөнө
+     */
+    public function testHeadFallbackInheritsGetMiddleware(): void
+    {
+        $this->router->GET('/cached', function () {
+        })->middleware(['CacheMiddleware', 'AuthMiddleware']);
+
+        $result = $this->router->match('/cached', 'HEAD');
+        $this->assertIsArray($result);
+        $this->assertEquals(['CacheMiddleware', 'AuthMiddleware'], $result[2]);
+    }
+
+    /**
+     * Closure middleware дамжуулж бүртгэх боломжтой
+     */
+    public function testClosureMiddlewareSupported(): void
+    {
+        $closureMiddleware = function ($req, $handler) {
+            return $handler->handle($req);
+        };
+
+        $this->router->GET('/test', function () {
+        })->middleware([$closureMiddleware]);
+
+        $result = $this->router->match('/test', 'GET');
+        $this->assertCount(1, $result[2]);
+        $this->assertSame($closureMiddleware, $result[2][0]);
+    }
+
+    /**
+     * registerMiddleware() public API нь шууд дуудах боломжтой
+     */
+    public function testRegisterMiddlewarePublicApi(): void
+    {
+        $this->router->GET('/foo', function () {
+        });
+
+        // (pattern, method) хосын дагуу middleware-ийг post-hoc-оор бүртгэх
+        $this->router->registerMiddleware('/foo', 'GET', ['MiddlewareA', 'MiddlewareB']);
+
+        $result = $this->router->match('/foo', 'GET');
+        $this->assertEquals(['MiddlewareA', 'MiddlewareB'], $result[2]);
+    }
+
+    /**
+     * Middleware нь (pattern, method) хосын дагуу scope-той - ижил pattern дээр
+     * өөр өөр method-уудын middleware нь тус тусдаа байх ёстой
+     */
+    public function testMiddlewareIsolationPerMethodOnSamePattern(): void
+    {
+        $this->router->GET('/api/users', function () {
+        });
+        $this->router->POST('/api/users', function () {
+        })->middleware(['AuthMiddleware', 'CsrfMiddleware']);
+
+        $getResult  = $this->router->match('/api/users', 'GET');
+        $postResult = $this->router->match('/api/users', 'POST');
+
+        $this->assertSame([], $getResult[2]);
+        $this->assertEquals(['AuthMiddleware', 'CsrfMiddleware'], $postResult[2]);
+    }
+
+    /**
+     * Compound method (GET_POST) ашигласан үед middleware нь дотоод method бүрд
+     * хувилагдаж бүртгэгдэх ёстой
+     */
+    public function testCompoundMethodMiddlewareAppliesToEachMethod(): void
+    {
+        $this->router->GET_POST('/foo', function () {
+        })->middleware(['Auth']);
+
+        $getResult  = $this->router->match('/foo', 'GET');
+        $postResult = $this->router->match('/foo', 'POST');
+
+        $this->assertEquals(['Auth'], $getResult[2]);
+        $this->assertEquals(['Auth'], $postResult[2]);
+    }
+
+    /**
+     * match() буцаах нь үргэлж 3 элементтэй tuple - destructuring шууд ажиллах
+     */
+    public function testMatchAlwaysReturnsThreeElementTuple(): void
+    {
+        $this->router->GET('/x', function () {
+        });
+        $this->router->GET('/y', function () {
+        })->middleware(['M']);
+
+        // Middleware-гүй
+        [$callable, $params, $middleware] = $this->router->match('/x', 'GET');
+        $this->assertIsCallable($callable);
+        $this->assertSame([], $params);
+        $this->assertSame([], $middleware);
+
+        // Middleware-тэй
+        [$callable, $params, $middleware] = $this->router->match('/y', 'GET');
+        $this->assertIsCallable($callable);
+        $this->assertSame([], $params);
+        $this->assertSame(['M'], $middleware);
     }
 }

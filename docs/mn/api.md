@@ -8,7 +8,7 @@
 
 - [RouterInterface](#routerinterface)
 - [Router](#router)
-- [Callback](#callback)
+- [Route](#route)
 
 ---
 
@@ -16,131 +16,135 @@
 
 **Namespace:** `codesaur\Router`
 
-Router хэрэгжүүлэх ёстой үндсэн интерфэйс.
+codesaur ecosystem-ийн router-ийн **бүрэн contract**. 4 method-ийг шаардана:
+- `match()` - request matching
+- `generate()` - reverse routing (route name -> URL)
+- `pattern()` - client-side substitution pattern
+- `getRoutes()` - introspection
+
+Үндсэн зорилго:
+- HTTP application болон Raptor controller-уудад router-ийн **хэрэгжилтээс үл хамаарах boundary** болох
+- Гадны router (FastRoute, Symfony, AltoRouter гэх мэт)-ийг adapter-аар ороож ашиглах боломж олгох
+- Concrete Router class-ын internal API-уудыг (`registerName()`, `registerMiddleware()`) interface-аас гадуур үлдээх
 
 ### Methods
 
-#### `getRoutes(): array`
+#### `match(string $path, string $method): ?array`
 
-Бүртгэлтэй бүх маршрутын жагсаалтыг буцаана.
-
-**Returns:** `array<string, array<string, Callback>>`  
-Маршрутын массив. Структур: `['pattern' => ['METHOD' => Callback объект]]`
-
-**Example:**
-```php
-$routes = $router->getRoutes();
-// [
-//     '/news/{int:id}' => [
-//         'GET' => Callback объект
-//     ]
-// ]
-```
-
----
-
-#### `merge(RouterInterface $router): void`
-
-Өөр Router-ийн маршрутуудыг энэ Router-тэй нэгтгэнэ.
+Орж ирсэн URL path болон HTTP method-д тохирох маршрутыг хайна.
 
 **Parameters:**
-- `RouterInterface $router` - Нэмэлт router (маршрутуудыг нэгтгэх)
-
-**Returns:** `void`
-
-**Notes:**
-- Ихэвчлэн модулиудын routes.php-г үндсэн router-тэй нэгтгэхэд ашиглагдана
-- Нэгтгэхдээ route name-ууд мөн нэгтгэгдэнэ
-- Хэрэв ижил нэртэй route байвал эхний router-ийнх нь давуу тал болно
-
-**Example:**
-```php
-$moduleRouter = new Router();
-$moduleRouter->GET('/module/route', function() { ... });
-
-$mainRouter->merge($moduleRouter);
-```
-
----
-
-#### `match(string $pattern, string $method): Callback|null`
-
-Орж ирсэн URL pattern болон HTTP method дээр үндэслэн тохирох маршрутыг хайж буцаана.
-
-**Parameters:**
-- `string $pattern` - Хайлтын URL path (жишээ: `/news/123`)
+- `string $path` - Хайлтын URL path (`/news/123` гэх мэт)
 - `string $method` - HTTP method (GET, POST, PUT, DELETE, PATCH...)
 
-**Returns:** `Callback|null`  
-Таарсан маршрут (Callback объект, динамик параметрүүд аль хэдийн set хийгдсэн байна), эсвэл null
+**Returns:** `array|null`
 
-**Example:**
+Таарах route олдвол **тогтмол 3 элементтэй tuple array** буцаана:
+- `[0]` - гүйцэтгэх callable (Closure эсвэл `[Class, 'method']`)
+- `[1]` - pattern-аас гаргаж авсан параметрүүд (`['id' => 10]` гэх мэт)
+- `[2]` - middleware жагсаалт (хоосон бол `[]`)
+
+Олдоогүй бол `null` буцаана.
+
+**Example - энгийн хэрэглээ:**
 ```php
-$callback = $router->match('/news/10', 'GET');
-if ($callback instanceof Callback) {
-    $params = $callback->getParameters(); // ['id' => 10]
-    $callable = $callback->getCallable();
-    call_user_func_array($callable, $params);
+$result = $router->match('/news/10', 'GET');
+if ($result === null) {
+    http_response_code(404);
+    return;
+}
+
+[$callable, $params, $middleware] = $result;
+call_user_func_array($callable, $params);
+```
+
+**Example - middleware-тэй custom router:**
+```php
+class MyRouter implements RouterInterface
+{
+    public function match(string $path, string $method): ?array
+    {
+        return [
+            $callable,                                     // [0] callable
+            ['id' => 10],                                  // [1] params
+            [AuthMiddleware::class, RBACMiddleware::class] // [2] middleware
+        ];
+    }
 }
 ```
 
+> **`codesaur/http-application`-тай интеграц:**
+> HTTP-Application нь match() үр дүнг бүхэлд нь request-ийн `match` attribute болгож дамжуулна. Шаардлагатай нэмэлт мэдээллийг middleware-аас request attribute-аар дамжуулна.
+
 ---
 
-#### `generate(string $routeName, array $params): string`
+#### `generate(string $routeName, array $params = []): string`
 
-Route name дээр үндэслэн URL үүсгэнэ (reverse routing).
+Reverse routing - route name дээр үндэслэн URL үүсгэнэ.
 
-**Parameters:**
-- `string $routeName` - Маршрутын нэр (name() методоор бүртгэсэн)
-- `array<string, mixed> $params` - Дамжуулах параметрүүд (жишээ: `['id' => 10, 'slug' => 'test']`)
-
-**Returns:** `string` - Үүсгэсэн URL path
+**Returns:** `string` - Үүсгэсэн URL path (raw, encode хийгдээгүй)
 
 **Throws:**
-- `\OutOfRangeException` - Хэрэв route name олдохгүй бол
-- `\InvalidArgumentException` - Хэрэв параметрийн төрөл буруу бол
+- `\OutOfRangeException` - Route name олдохгүй бол
+- `\InvalidArgumentException` - Параметрийн төрөл буруу бол
+
+NOTE: **Encoding contract:** parameter утгуудыг **түүхий** substitution хийнэ - percent-encoding хийдэггүй. PSR-7 `UriInterface::withPath()`-тай double-encoding-аас зайлсхийх contract.
 
 **Example:**
 ```php
-$router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]);
-// -> "/news/10"
+$url = $router->generate('news-view', ['id' => 10]);  // '/news/10'
 ```
 
 ---
 
 #### `pattern(string $routeName): string`
 
-Route name -> client-side substitution-д бэлэн URL pattern буцаана.
-
-`generate()`-аас ялгаатай нь параметрийн утга шаардахгүй, харин зөвхөн filter prefix-уудыг (`int:`, `uint:`, `float:`, `utf8:`) хасч JavaScript-н `String.replace('{name}', value)` хийхэд бэлэн pattern буцаана.
-
-**Parameters:**
-- `string $routeName` - Маршрутын нэр (`name()` методоор бүртгэсэн)
+Client-side substitution-д бэлэн URL pattern буцаана. Filter prefix-уудыг (`int:`, `uint:`, ...) хасч цэвэр placeholder pattern өгнө.
 
 **Returns:** `string` - Filter prefix хасагдсан pattern
 
-**Throws:**
-- `\OutOfRangeException` - Route name олдохгүй бол
+**Throws:** `\OutOfRangeException` - Route name олдохгүй бол
 
 **Example:**
 ```php
-$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
-$pattern = $router->pattern('news-view');
-// -> "/news/{id}/{slug}"
+$pattern = $router->pattern('news-view');  // '/news/{id}/{slug}'
 ```
 
-**Template + JS хэрэглээ:**
+---
 
-```html
-<script>
-const URL = '{{ "news-view"|pattern }}';
-fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
-</script>
+#### `getRoutes(): array`
+
+Бүртгэлтэй бүх маршрутын жагсаалт (introspection-д зориулагдсан).
+
+**Бүтэц - (pattern, method) бүрд 2-tuple `[callable, middleware]`:**
+```
+[
+    pattern => [
+        method => [
+            [0] callable,    // гүйцэтгэх
+            [1] middleware,  // route-д бүртгэсэн middleware жагсаалт
+        ]
+    ]
+]
 ```
 
-> **Тэмдэглэл:** `|pattern` template filter нь энэхүү package-д суурилуулагдсан биш. Та өөрийн template engine-д filter-ийг бүртгэх хэрэгтэй, жишээ нь
-> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. Дэлгэрэнгүй [README - Client-side URL Pattern](README.md#client-side-url-pattern) хэсгээс үзнэ үү.
+Pattern нь outer key учраас params мэдээллийг агуулна - entry дотор params placeholder шаардлагагүй. Match-time-ийн params нь зөвхөн `match()` дотор тооцоологдоно.
+
+**Хэрэглээний жишээ:**
+- Admin panel-д бүх routes-ыг жагсаах
+- Sitemap auto-generate хийх
+- API documentation auto-generate хийх
+
+**Example:**
+```php
+foreach ($router->getRoutes() as $pattern => $methods) {
+    foreach ($methods as $method => [$callable, $middleware]) {
+        echo "$method $pattern\n";
+    }
+}
+```
+
+**Route name мэдээлэл:** Naming нь тусдаа concern - `getRoutes()`-д орохгүй. Name хэрэгтэй бол `generate($name)`-ээр URL үүсгэх, эсвэл `pattern($name)`-аар client-side pattern авах.
 
 ---
 
@@ -148,7 +152,7 @@ fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
 
 **Namespace:** `codesaur\Router`
 
-codesaur Framework-ийн хөнгөн жинтэй маршрутчилал (routing) шийдлийн үндсэн Router класс.
+codesaur ecosystem-ийн хөнгөн жинтэй маршрутчиллын үндсэн Router класс.
 
 **Implements:** `RouterInterface`
 
@@ -156,463 +160,210 @@ codesaur Framework-ийн хөнгөн жинтэй маршрутчилал (ro
 
 Энэхүү Router нь дараах үйлдлүүдийг гүйцэтгэнэ:
 - Маршрут бүртгэх (динамик `__call` ашиглан: `$router->GET('/news', ...)` хэлбэрээр)
-- `{int:id}`, `{float:price}`, `{uint:page}`, `{slug}` гэх мэт параметртэй маршрут боловсруулах
+- `{int:id}`, `{float:price}`, `{uint:page}`, `{slug}`, `{utf8:text}` гэх мэт параметртэй маршрут боловсруулах
 - Request path болон HTTP method-д тохирох маршрутыг `match()` ашиглан олох
-- Route name -> URL generate хийх
-- Модулийн бусад Router-уудыг `merge()` ашиглан нэгтгэх
+- Route name -> URL generate хийх (reverse routing)
+- Per-route middleware дэмжих (`Route::middleware()`)
 
 Жижиг, тогтвортой, фрэймворкоос үл хамааран standalone байдлаар ашиглаж болно.
 
 ### Constants
 
-#### `FILTERS_REGEX`
-
-Параметертэй маршрутыг илрүүлэх regex pattern.
-
-**Value:** `'/\{(int:|uint:|float:|utf8:)?(\w+)}/'`
-
-Энэ regex нь `{param}`, `{int:id}`, `{uint:page}`, `{float:price}`, `{utf8:text}` гэх мэт бүх төрлийн параметрийг илрүүлнэ.
-
-**Example:** `/news/{int:id}/{slug}`
-
----
-
-#### `INT_REGEX`
-
-INTEGER төрлийн параметрийн regex pattern. Сөрөг болон эерэг бүхэл тоонуудыг зөвшөөрнө.
-
-**Value:** `'(-?\d+)'`
-
----
-
-#### `UNSIGNED_INT_REGEX`
-
-UNSIGNED INTEGER төрлийн параметрийн regex pattern. Зөвхөн эерэг бүхэл тоонуудыг зөвшөөрнө (0 ба түүнээс дээш).
-
-**Value:** `'(\d+)'`
-
----
-
-#### `FLOAT_REGEX`
-
-FLOAT төрлийн параметрийн regex pattern. Сөрөг болон эерэг бутархай тоонуудыг зөвшөөрнө.
-
-**Value:** `'(-?\d+|-?\d*\.\d+)'`
-
----
-
-#### `DEFAULT_REGEX`
-
-DEFAULT string төрлийн параметрийн regex pattern. URL-safe тэмдэгтүүд болон зарим тусгай тэмдэгтүүдийг зөвшөөрнө.
-
-**Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)'`
-
----
-
-#### `UTF8_REGEX`
-
-UTF-8 string төрлийн параметрийн regex pattern. `DEFAULT_REGEX` дээр нэмэлтээр multibyte UTF-8 байт хүрээ (`\x80-\xFF`) болон хоосон зай зөвшөөрнө. Percent-encoded болон raw UTF-8 тэмдэгтүүд (Кирилл, Хятад, Араб гэх мэт) аль алиныг нь тааруулна.
-
-**Value:** `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)'`
-
-Бүх PHP серверүүд дээр ажиллана (Apache, Nginx, LiteSpeed, IIS, Caddy, PHP built-in).
-
----
+| Нэр | Утга | Зориулалт |
+|---|---|---|
+| `FILTERS_REGEX` | `'/\{(int:|uint:|float:|utf8:)?(\w+)}/'` | `{param}`, `{int:id}` гэх мэт бүх параметрийг илрүүлэх |
+| `INT_REGEX` | `'(-?\d+)'` | Сөрөг ба эерэг бүхэл тоо |
+| `UNSIGNED_INT_REGEX` | `'(\d+)'` | Зөвхөн эерэг бүхэл тоо (0 ба түүнээс дээш) |
+| `FLOAT_REGEX` | `'(-?\d+|-?\d*\.\d+)'` | Сөрөг ба эерэг бутархай тоо |
+| `DEFAULT_REGEX` | `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@\-]+)'` | URL-safe тэмдэгтүүд (хоосон зайгүй) |
+| `UTF8_REGEX` | `'([A-Za-z0-9%_,!~&)(=;\'\$\.\*\]\[\@ \x80-\xFF\-]+)'` | UTF-8 multibyte (Кирилл, CJK гэх мэт) + хоосон зай |
 
 ### Methods
 
-#### `__call(string $method, array $properties): static`
+#### `__call(string $method, array $properties): Route`
 
-Магик метод - GET, POST, PUT, DELETE гэх мэт маршрут бүртгэнэ.
+Магик метод - `GET`, `POST`, `PUT`, `DELETE` гэх мэт маршрут бүртгэнэ.
 
 **Parameters:**
-- `string $method` - HTTP method нэр (GET, POST, PUT, DELETE, PATCH гэх мэт)
-- `array<mixed> $properties` -
-  - `[0]` => route pattern (string) - маршрутын pattern
-  - `[1]` => callback (callable|array) - гүйцэтгэх callback
+- `string $method` - HTTP method нэр (`GET`, `POST`, ..., `GET_POST`-маягийн олон method ч боломжтой)
+- `array<mixed> $properties` - 
+ - `[0]` => route pattern (string)
+ - `[1]` => callable (Closure эсвэл `[Class, 'method']`)
 
-**Returns:** `static` - Method chaining-д зориулж router объектыг буцаана
+**Returns:** `Route` - Бүртгэсэн route-ыг илэрхийлэх immutable Route объект. `->name(...)` гэх мэт fluent API-д ашиглагдана.
 
 **Throws:**
-- `\InvalidArgumentException` - Буруу маршрут тохиргоо үед (pattern эсвэл callback хоосон/буруу байвал)
-
-**Notes:**
-- Энэ метод нь динамик аргаар HTTP method-уудыг дуудаж болох болгодог
-- Method нь том үсгээр бичигдсэн байх ёстой (GET, POST, PUT, DELETE, PATCH)
+- `\InvalidArgumentException` - pattern эсвэл callback хоосон/буруу байвал
 
 **Example:**
 ```php
 $router->GET('/news/{int:id}', [NewsController::class, 'view'])->name('news-view');
 $router->POST('/users', function() { ... });
-$router->PUT('/users/{int:id}', [UserController::class, 'update']);
+$router->GET_POST('/api/data', [ApiController::class, 'data']);  // олон method
 ```
 
 ---
 
-#### `name(string $ruleName): void`
+#### `registerName(string $ruleName, string $pattern): void`
 
-Сүүлд бүртгэгдсэн маршрутад нэр онооно.
+Route name -> pattern бүртгэх **internal API**. Хэвлэг хэрэглээнд `$router->GET(...)->name(...)` chain ашиглах нь зөв (Route::name()-аас автоматаар дуудагдана).
 
 **Parameters:**
 - `string $ruleName` - Маршрутын нэр (уникаль байх ёстой)
-
-**Returns:** `void`
+- `string $pattern` - Маршрутын pattern
 
 **Notes:**
-- Нэртэй маршрутуудыг `generate()` метод ашиглан URL үүсгэхэд ашиглана
-- Нэг маршрутад зөвхөн нэг нэр оноож болно
-- Хэрэв дахин `name()` дуудвал сүүлд бүртгэгдсэн маршрутын нэрийг шинэчилнэ
+- Хэвийн хэрэглээ нь `Route::name()`-аар явдаг
+- Шууд дуудах тохиолдол: post-hoc нэр оноох (route бүртгэсний дараа)
+- Ижил нэртэй бол шинэ pattern-аар дарж бичнэ
 
 **Example:**
 ```php
+// Стандарт хэрэглээ (Route::name()-аар автоматаар):
 $router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
+
+// Post-hoc нэр оноох:
+$router->GET('/foo', $handler);
+$router->registerName('foo', '/foo');
 ```
 
 ---
 
-#### `match(string $path, string $method): Callback|null`
+#### `registerMiddleware(string $pattern, string $method, array $middleware): void`
 
-Request path болон HTTP method-д тохирох маршрутыг хайж олно.
+(pattern, method) route-д middleware жагсаалт хавсаргах **internal API**. Хэвлэг хэрэглээнд `Route::middleware([...])` chain ашиглах нь зөв.
 
 **Parameters:**
-- `string $path` - Орж ирсэн URL path (жишээ: `/news/10`)
-- `string $method` - HTTP method (GET, POST, PUT, DELETE, PATCH гэх мэт)
-
-**Returns:** `Callback|null` - Таарсан маршрут (Callback объект), эсвэл null
+- `string $pattern` - Маршрутын pattern
+- `string $method` - HTTP method (compound `'GET_POST'` дэмжинэ)
+- `list<class-string|callable|\Psr\Http\Server\MiddlewareInterface> $middleware`
 
 **Notes:**
-- Энэ метод нь бүртгэлтэй маршрутуудыг дарааллаар шалгаж, таарах эхний маршрутыг буцаана
-- Динамик параметрүүд олдвол Callback объектод автоматаар set хийгдэнэ
+- Scope нь **(pattern, method)** хосоор хязгаарлагдана - өөр method дээрх middleware-уудаас тусгаарлагдсан
+- Compound method (`GET_POST`) ашигласан бол дотоод method бүрд middleware хувилагдана
+- Append semantics - хэд хэдэн удаа дуудвал middleware-ууд цуглуулагдана
+- match()-ийн tuple-д `[2]` position-оор буцаагдана
+- Хэвлэг flow: `Route::middleware([...])` -> автоматаар registerMiddleware() дуудна
+- Шууд дуудах тохиолдол: base class-ийн auto-attach, post-hoc нэмэлт
 
 **Example:**
 ```php
-$callback = $router->match('/news/10', 'GET');
-if ($callback instanceof Callback) {
-    $params = $callback->getParameters(); // ['id' => 10]
-    $callable = $callback->getCallable();
-    call_user_func_array($callable, $params);
-}
+// Стандарт flow:
+$router->POST('/api/users', $handler)
+    ->middleware([CsrfMiddleware::class]);
+
+// Post-hoc:
+$router->GET('/foo', $handler);
+$router->registerMiddleware('/foo', 'GET', [AuthMiddleware::class]);
 ```
 
 ---
 
-#### `merge(RouterInterface $router): void`
+#### `match(string $path, string $method): ?array`
 
-Өөр router-ийн маршрутыг энэ router-т нэгтгэнэ.
+`RouterInterface::match()`-ийн хэрэгжилт. Tuple shape, return contract зэрэг ерөнхий зүйлийг RouterInterface::match section-аас үзнэ үү.
 
-**Parameters:**
-- `RouterInterface $router` - Нэмэлт router (маршрутуудыг нэгтгэх)
-
-**Returns:** `void`
-
-**Notes:**
-- Энэ метод нь модулиудын routes.php файлуудыг үндсэн router-тэй нэгтгэхэд ашиглагдана
-- Route name-ууд мөн нэгтгэгдэнэ
-- Хэрэв ижил нэртэй route байвал эхний router-ийнх нь давуу тал болно
-
-**Example:**
-```php
-$moduleRouter = new Router();
-$moduleRouter->GET('/module/route', function() { ... });
-$mainRouter->merge($moduleRouter);
-```
+**codesaur Router-ийн хэрэгжилтийн нэмэлт онцлог:**
+- **HEAD -> GET авто fallback** (RFC 7231 sec. 4.3.2):
+  Explicit HEAD route байхгүй бол HEAD request автоматаар GET handler руу очно.
+  Consumer нь HEAD response-ийн body-г цэвэрлэх ёстой.
 
 ---
 
 #### `generate(string $ruleName, array $params = []): string`
 
-Route name -> URL generate хийнэ (reverse routing).
-
-**Parameters:**
-- `string $ruleName` - Route name (name() методоор бүртгэсэн)
-- `array<string, mixed> $params` - Параметрүүд (жишээ: `['id' => 10, 'slug' => 'test']`)
-
-**Returns:** `string` - Үүсгэсэн URL path
-
-**Throws:**
-- `\OutOfRangeException` - Нэртэй маршрут олдохгүй бол
-- `\InvalidArgumentException` - Параметрийн төрөл буруу бол (жишээ: int шаардлагатай боловч string дамжуулсан)
-
-**Notes:**
-- Нэртэй маршрутын pattern-д параметрүүдийг суулгаж, бодит URL үүсгэнэ
-- Параметрийн төрөл (int, uint, float) шалгагдаж, буруу бол exception шиднэ
-
-**Example:**
-```php
-$router->GET('/news/{int:id}', ...)->name('news-view');
-$url = $router->generate('news-view', ['id' => 10]); // -> /news/10
-```
+`RouterInterface::generate()`-ийн хэрэгжилт. Дэлгэрэнгүйг RouterInterface::generate section-аас үзнэ үү.
 
 ---
 
 #### `pattern(string $ruleName): string`
 
-Route name -> client-side substitution-д бэлэн URL pattern буцаана.
+`RouterInterface::pattern()`-ийн хэрэгжилт. Дэлгэрэнгүйг RouterInterface::pattern section-аас үзнэ үү.
 
-**Parameters:**
-- `string $ruleName` - Route name (`name()` методоор бүртгэсэн)
-
-**Returns:** `string` - `int:`, `uint:`, `float:`, `utf8:` prefix хасагдсан pattern
-
-**Throws:**
-- `\OutOfRangeException` - Route name олдохгүй бол
-
-**Notes:**
-- Параметрийн утгыг шалгахгүй - pattern-ийг хэвээр client-руу буцаана
-- Static хэсгүүд (placeholder-гүй) өөрчлөгдөхгүй
-- Жагсаалтын мөр бүрд edit/delete товч байх AJAX UI-д JavaScript runtime-д утга оруулахад тохиромжтой
-
-**Example:**
-```php
-$router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
-$pattern = $router->pattern('news-view');
-// -> '/news/{id}/{slug}'
-```
-
-**Template + JS хэрэглээ:**
-
+**Template + JS хэрэглээний жишээ:**
 ```html
 <script>
-const URL = '{{ "news-view"|pattern }}';
+const URL = '<?= $router->pattern('news-view') ?>';
 fetch(URL.replace('{id}', 42).replace('{slug}', 'hello'));
 </script>
 ```
 
-> **Тэмдэглэл:** `|pattern` template filter нь энэхүү package-д суурилуулагдсан биш. Та өөрийн template engine-д filter-ийг бүртгэх хэрэгтэй, жишээ нь
-> `$template->addFilter('pattern', fn($name) => $router->pattern($name));`. Дэлгэрэнгүй [README - Client-side URL Pattern](README.md#client-side-url-pattern) хэсгээс үзнэ үү.
-
 ---
 
-#### `getRoutes(): array`
-
-Бүртгэлтэй маршрутуудын жагсаалтыг буцаана.
-
-**Returns:** `array<string, array<string, Callback>>`
-
-**Example:**
-```php
-$routes = $router->getRoutes();
-```
-
----
-
-## Callback
+## Route
 
 **Namespace:** `codesaur\Router`
 
-Router-ийн маршрут бүрт тохирох callable (function, method, closure гэх мэт) болон тухайн callable-д дамжуулах параметрүүдийг хадгалах жижиг wrapper класс.
+`Router::__call()` метод route бүртгэх үед буцаах **immutable value object**. `->name(...)` гэх мэт fluent API-г олгоно.
 
 ### Description
 
-Энэ класс нь маршрутын үед динамик параметрүүдийг илгээхэд ашиглагдана.
+Route class нь Router-г **stateless** байлгахын тулд оршино:
+- Бүртгэсэн route нь өөрийн pattern context-ыг агуулсан тул `name()`, `middleware()` зэрэг fluent method-ууд зөрчилгүйгээр ажиллана
+- PHP 8.2 `readonly` class - immutable
 
-### Constructor
+### Properties
 
-#### `__construct(callable|array $callable)`
+#### `public readonly string $pattern`
 
-**Parameters:**
-- `callable|array{class-string, string} $callable` - Гүйцэтгэх callable объект
-  - Function: `'function_name'`
-  - Closure: `function() { ... }`
-  - Static method: `[ClassName::class, 'methodName']`
-  - Instance method: `[$object, 'methodName']`
-
-**Example:**
-```php
-// Closure
-$callback = new Callback(function($id) {
-    return "ID: $id";
-});
-
-// Controller method
-$callback = new Callback([UserController::class, 'view']);
-
-// Function
-$callback = new Callback('my_function');
-```
-
----
+Энэ route-ын pattern (`/news/{int:id}` гэх мэт). Уншигдах боломжтой, өөрчлөгдөхгүй.
 
 ### Methods
 
-#### `getCallable(): callable|array`
+#### `name(string $ruleName): self`
 
-Бүртгэлтэй callable-г буцаана.
-
-**Returns:** `callable|array{class-string, string}` - Гүйцэтгэх callable объект
-
-**Example:**
-```php
-$callable = $callback->getCallable();
-
-if ($callable instanceof \Closure) {
-    // Closure
-    call_user_func_array($callable, $params);
-} else if (is_array($callable)) {
-    // Controller method
-    [$class, $method] = $callable;
-    $controller = new $class();
-    call_user_func_array([$controller, $method], $params);
-} else {
-    // Function
-    call_user_func_array($callable, $params);
-}
-```
-
----
-
-#### `getParameters(): array`
-
-Маршрутаас дамжуулагдах параметрүүдийг буцаана.
-
-**Returns:** `array<string, mixed>` - Параметрийн массив (түлхүүр нь параметрийн нэр)
-
-**Notes:**
-- Параметрүүд нь route pattern-ийн динамик хэсгүүдээс гаргаж авсан утгууд юм
-- Жишээ: `/news/{int:id}` pattern-д `/news/10` path таарвал `['id' => 10]` буцаана
-
-**Example:**
-```php
-$params = $callback->getParameters();
-// ['id' => 10, 'slug' => 'test-article']
-```
-
----
-
-#### `setParameters(array $parameters): void`
-
-Callable-д дамжуулах параметрүүдийг онооно.
+Энэ маршрутад нэр оноох.
 
 **Parameters:**
-- `array<string, mixed> $parameters` - Параметрүүд (түлхүүр нь параметрийн нэр)
+- `string $ruleName` - Route name (уникаль байх ёстой)
 
-**Returns:** `void`
+**Returns:** `self` - Энэ Route объектыг буцаана (chaining-д)
 
 **Notes:**
-- Энэ метод нь ихэвчлэн `Router::match()` методоор дуудагдаж, route pattern-аас гаргаж авсан параметрүүдийг Callback объектод хадгална
+- Strict mode - ижил name өөр pattern-д оноох гэвэл `\LogicException` шиднэ
+- Дотооддоо `Router::registerName()`-г дуудна
 
 **Example:**
 ```php
-$callback->setParameters(['id' => 10, 'slug' => 'test']);
+$router->GET('/news/{int:id}', $handler)->name('news.view');
 ```
 
----
+#### `middleware(array $middleware): self`
 
-## Route Parameter Types
+Энэ маршрутад **middleware жагсаалт хавсаргах**. Тухайн route ажиллахаас өмнө эдгээр middleware дуудагдана.
 
-Router нь дараах төрлийн параметрүүдийг дэмжинэ:
+**Parameters:**
+- `list<class-string|callable|\Psr\Http\Server\MiddlewareInterface> $middleware` - Middleware жагсаалт
 
-| Төрөл | Pattern | Жишээ | Тайлбар | Regex |
-|------|---------|-------|---------|-------|
-| Integer | `{int:id}` | `/post/{int:id}` | Сөрөг тоо зөвшөөрнө | `(-?\d+)` |
-| Unsigned Integer | `{uint:page}` | `/users/{uint:page}` | Зөвхөн эерэг бүхэл тоо (0 ба түүнээс дээш) | `(\d+)` |
-| Float | `{float:num}` | `/price/{float:num}` | 1.4, -2.56 гэх мэт | `(-?\d+|-?\d*\.\d+)` |
-| String (default) | `{slug}` | `/tag/{slug}` | A-z0-9 болон URL-safe тэмдэгтүүд | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@-]+)` |
-| UTF-8 String | `{utf8:text}` | `/search/{utf8:query}` | Multibyte UTF-8 тэмдэгтүүд (Кирилл, Хятад, Араб гэх мэт) | `([A-Za-z0-9%_,!~&)(=;'$.*\[\]@ \x80-\xFF-]+)` |
+**Returns:** `self` - Энэ Route объектыг буцаана (chaining-д)
+
+**Middleware-ийн төрлүүд:**
+- **class-string** - PSR-15 MiddlewareInterface хэрэгжүүлсэн класс (HTTP-Application instance үүсгэнэ)
+- **callable / Closure** - `function($request, $handler)` гарын үсэг
+- **MiddlewareInterface instance** - урьдчилан үүсгэсэн object
+
+**Notes:**
+- Append semantics - олон удаа дуудвал middleware-ууд цуглуулагдана
+- Дотооддоо `Router::registerMiddleware()`-г дуудна
+- match()-ийн tuple-д `[2]` position-оор буцаагдана
 
 **Example:**
 ```php
-// Олон төрлийн параметр ашиглах
-$router->GET('/sum/{int:a}/{uint:b}', function (int $a, int $b) {
-    echo "$a + $b = " . ($a + $b);
-});
+// Энгийн хэрэглээ
+$router->POST('/api/users', $handler)
+    ->middleware([CsrfMiddleware::class, RBACMiddleware::class]);
 
-// Float параметр
-$router->GET('/price/{float:amount}', function (float $amount) {
-    echo "Price: $amount";
-});
+// Append semantics
+$router->GET('/admin', $handler)
+    ->middleware([AuthMiddleware::class])
+    ->middleware([AdminOnlyMiddleware::class]);
+// Бүртгэгдсэн: [Auth, AdminOnly]
 
-// String параметр (default)
-$router->GET('/tag/{slug}', function (string $slug) {
-    echo "Tag: $slug";
-});
-
-// UTF-8 параметр (Кирилл, Хятад, Араб гэх мэт)
-$router->GET('/search/{utf8:query}', function (string $query) {
-    echo "Search: $query";
-});
-```
-
-**Анхаарах зүйл:**
-- Параметрийн нэр нь route pattern болон callback function-ийн parameter name-тэй ижил байх ёстой
-- `generate()` method ашиглах үед параметрийн төрөл шалгагдана
-
----
-
-## HTTP Methods
-
-Router нь дараах HTTP method-уудыг дэмжинэ:
-- **GET** - Өгөгдөл унших
-- **POST** - Шинэ өгөгдөл үүсгэх
-- **PUT** - Бүхэлд нь шинэчлэх
-- **DELETE** - Устгах
-- **PATCH** - Хэсэгчлэн шинэчлэх
-
-**Example:**
-```php
-// GET - Өгөгдөл авах
-$router->GET('/users', function() {
-    return getAllUsers();
-});
-
-// POST - Шинэ хэрэглэгч үүсгэх
-$router->POST('/users', function() {
-    return createUser($_POST);
-});
-
-// PUT - Хэрэглэгч шинэчлэх
-$router->PUT('/users/{int:id}', function(int $id) {
-    return updateUser($id, $_POST);
-});
-
-// DELETE - Хэрэглэгч устгах
-$router->DELETE('/users/{int:id}', function(int $id) {
-    return deleteUser($id);
-});
-
-// PATCH - Хэсэгчлэн шинэчлэх
-$router->PATCH('/users/{int:id}', function(int $id) {
-    return partialUpdateUser($id, $_POST);
-});
-```
-
-**RESTful API жишээ:**
-```php
-// Users resource
-$router->GET('/users', [UserController::class, 'index'])->name('users.index');
-$router->GET('/users/{int:id}', [UserController::class, 'show'])->name('users.show');
-$router->POST('/users', [UserController::class, 'store'])->name('users.store');
-$router->PUT('/users/{int:id}', [UserController::class, 'update'])->name('users.update');
-$router->DELETE('/users/{int:id}', [UserController::class, 'destroy'])->name('users.destroy');
-```
-
----
-
-## Exceptions
-
-### `\InvalidArgumentException`
-
-Буруу маршрут тохиргоо эсвэл параметрийн төрөл буруу байх үед шидэгдэнэ.
-
-**Example:**
-```php
-try {
-    $router->generate('profile', ['id' => 'abc']); // int шаардлагатай
-} catch (\InvalidArgumentException $e) {
-    // Параметрийн төрөл буруу
-}
-```
-
-### `\OutOfRangeException`
-
-Нэртэй маршрут олдохгүй байх үед шидэгдэнэ.
-
-**Example:**
-```php
-try {
-    $router->generate('non-existent-route', []);
-} catch (\OutOfRangeException $e) {
-    // Маршрут олдсонгүй
-}
+// Closure middleware
+$router->GET('/test', $handler)
+    ->middleware([
+        function($req, $handler) {
+            return $handler->handle($req->withAttribute('test', true));
+        }
+    ]);
 ```

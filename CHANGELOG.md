@@ -6,23 +6,182 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [6.0.0] - 2026-05-24
+[6.0.0]: https://github.com/codesaur-php/Router/compare/v5.2.0...v6.0.0
+
+### Breaking changes
+
+- **`Callback` class removed.** `Router::match()` now returns a fixed
+  3-tuple `array{0: callable, 1: array, 2: list<middleware>}|null` instead of
+  the wrapper object. Consumers destructure with `[$callable, $params, $middleware] = $result`.
+- **`Router::merge(Router)` removed.** Module routes are no longer absorbed into
+  a parent router. `codesaur/http-application` will delegate to sub-routers
+  directly (delegation chain) in an upcoming release, so the merge step
+  becomes unnecessary.
+- **`Router::name(string)` removed (public method).** Route naming now goes
+  through the new `Route::name()` fluent API. The Router itself is stateless
+  again - the transient `$lastPattern` property is gone.
+- **`Router::getNamePatterns()` removed.** Was only used by the removed `merge()`;
+  not part of any production code path.
+- **`Router::getRoutes()` shape changed.** Each entry is now a 2-tuple
+  `[callable, middleware]` rather than the bare callable. The pattern is still
+  the outer key, methods are still the inner key. Name is intentionally **not**
+  included - naming is a separate concern, use `generate($name)` or
+  `pattern($name)` for name-based lookup, or access the protected
+  `$name_patterns` property from a subclass for direct introspection.
+- **`Router::__call()` return type changed.** Now returns a `Route` value object
+  instead of `$this`. `$router->GET(...)->name(...)->middleware([...])` still
+  works because `Route::name()` and `Route::middleware()` are chainable.
+- **Internal storage merged.** Per-route middleware was previously kept in a
+  separate `$route_middleware` array; it now lives inside `$routes` as
+  `[pattern => [method => [callable, middleware]]]` - method-level granularity,
+  single source of truth.
+- **Storage `$_callable`, `$_params`, `$_pattern` underscore prefixes removed.**
+  PSR-12 sec. 4.3 explicitly forbids `_`-prefixed properties; they are now
+  `$callable`, `$params`, `$lastPattern` (the last is gone entirely as part of
+  the stateless refactor).
+
+### Added
+
+- **`Route` class.** Immutable `final readonly` value object returned by
+  `Router::__call()`. Carries the registered pattern and a back-reference to
+  the Router. Exposes `name(string)` and `middleware(array)` fluent methods.
+- **`Route::middleware([...])`.** Per-route middleware, scoped to the
+  **(pattern, method)** pair the same way Express, Laravel, Slim and Fastify
+  scope theirs - so `GET /foo` middleware does not fire on `POST /foo`, and the
+  "public read, protected write" pattern works out of the box:
+  ```php
+  $router->GET('/api/users', $list);                                 // public
+  $router->POST('/api/users', $create)->middleware([Auth::class]);   // protected
+  // match('/api/users', 'GET')[2]  -> []
+  // match('/api/users', 'POST')[2] -> [Auth::class]
+  ```
+  Accepts class-strings (PSR-15 `MiddlewareInterface`), pre-instantiated
+  middleware objects, and Closures. Append semantics - multiple chained calls
+  accumulate. Compound method registrations (`GET_POST`) fan the middleware
+  out to each constituent method:
+  ```php
+  $router->POST('/users', $cb)->middleware([CsrfMiddleware::class, RBACMiddleware::class]);
+  $router->GET('/admin', $cb)->middleware([Auth::class])->middleware([AdminOnly::class]);
+  $router->GET_POST('/foo', $cb)->middleware([Auth::class]);  // attaches to both GET and POST
+  ```
+- **Strict name conflict detection.** `Router::registerName()` (and therefore
+  `Route::name()`) throws `\LogicException` when the same name is reassigned
+  to a different pattern. Re-registering the same name on the same pattern
+  stays idempotent (no-op), so post-hoc registration of an already-named route
+  still works. Previously the second registration silently overwrote the first,
+  hiding the original route from `generate()`:
+  ```php
+  $router->GET('/users', $a)->name('users');
+  $router->GET('/admin', $b)->name('users');  // throws \LogicException
+  ```
+- **`RouterInterface` is now the full contract** (`match`, `generate`, `pattern`,
+  `getRoutes`). Third-party routers (FastRoute, Symfony Routing, AltoRouter,
+  etc.) can be wrapped in adapters that implement this interface, and an
+  upcoming `codesaur/http-application` release will accept them directly.
+  Adapter compatibility is covered by `tests/AdapterPatternTest.php`.
+- **`Router::registerName()` and `Router::registerMiddleware()`.** Public
+  `@internal` setters that `Route::name()` and `Route::middleware()` delegate
+  to. `registerMiddleware(string $pattern, string $method, array $middleware)`
+  takes the method (compound `GET_POST` accepted) so middleware lands on the
+  correct (pattern, method) bucket. They are also callable directly for
+  post-hoc registration or for the inheritance pattern documented in the
+  README (auto-attaching middleware via a subclass overriding `__call`).
+- **HEAD -> GET auto-fallback (RFC 7231 sec. 4.3.2).** A `HEAD` request without an
+  explicit `HEAD` route is automatically dispatched to the registered `GET`
+  handler, inheriting its middleware. Explicit `HEAD` routes still win when
+  present. The consumer is responsible for stripping the response body (a
+  forthcoming `codesaur/http-application` release will do this in its
+  dispatcher).
+- **Per-route middleware demo in `example/index.php`.** Three sample middleware
+  classes (`LoggingMiddleware`, `AuthMiddleware`, `TimingMiddleware`) and four
+  demo routes (`/middleware-demo`, `/admin/secret`, `/middleware-chain`, plus
+  a `?token=secret` variant) exercise the onion-model pipeline end-to-end.
+
+### Improved
+
+- **Public API surface minimised.** Three files in `src/`: `Router.php`,
+  `Route.php`, `RouterInterface.php`. Public methods: `__call`, `match`,
+  `generate`, `pattern`, `getRoutes`, `registerName`, `registerMiddleware`
+  (plus the two `Route` methods). Nothing else is exposed.
+- **`match()` performance.** Always-3-element tuple means positional access
+  (`$result[2]`) - no hash lookup for middleware. Direct destructuring
+  `[$callable, $params, $middleware] = $result` is the fastest pattern PHP
+  offers for this shape.
+- **Test suite expanded.** From 54 tests / 103 assertions in v5.2.0 to
+  **71 tests / 161 assertions** in v6.0.0. New coverage: HEAD fallback (4),
+  per-route middleware (10, including per-method isolation and `GET_POST`
+  fan-out), `Route` object (6), adapter pattern (4),
+  `getRoutes()` 2-tuple shape (2), strict name conflict detection (2).
+- **PSR-12 sec. 4.3 compliance.** All properties renamed off the `_` prefix.
+- **`@inheritDoc` used consistently.** Concrete methods that implement
+  interface contracts no longer duplicate the docblock - one source of truth
+  in `RouterInterface`.
+
+### Migration guide (5.2.0 -> 6.0.0)
+
+```php
+// === BEFORE (5.2.0) ===
+$callback = $router->match($path, $method);
+if ($callback instanceof Callback) {
+    $callable = $callback->getCallable();
+    $params   = $callback->getParameters();
+    \call_user_func_array($callable, $params);
+}
+
+$mainRouter->merge($moduleRouter);
+
+$patterns = $router->getNamePatterns();
+
+// === AFTER (6.0.0) ===
+$result = $router->match($path, $method);
+if ($result !== null) {
+    [$callable, $params, $middleware] = $result;
+    // ... run middleware pipeline ...
+    \call_user_func_array($callable, $params);
+}
+
+// merge() is gone - an upcoming codesaur/http-application release will
+// expose a delegation chain (just $app->use(new ModuleRouter())) so that
+// modules can register their own routers without merging.
+
+// getNamePatterns() is gone - getRoutes() no longer exposes names either.
+// For naming, call generate($name) directly:
+$url = $router->generate('news.view', ['id' => 10]);
+
+// To iterate route definitions:
+foreach ($router->getRoutes() as $pattern => $methods) {
+    foreach ($methods as $method => [$callable, $middleware]) {
+        echo "$method $pattern\n";
+    }
+}
+```
+
+### Removed
+
+- `src/Callback.php` (class deleted)
+- `tests/CallbackTest.php` (10 tests removed; behaviour now covered by
+  `RouterTest` against the match() 3-tuple)
+
+---
+
 ## [5.2.0] - 2026-05-12
 [5.2.0]: https://github.com/codesaur-php/Router/compare/v5.1.1...v5.2.0
 
 ### Added
 
 - **`pattern()` method** - Returns route pattern with filter prefixes stripped, suitable for client-side substitution
-  - `pattern('news-view')` -> `/news/{id}/{slug}` (instead of `/news/{int:id}/{slug}`)
-  - Throws `OutOfRangeException` if route name not found (consistent with `generate()`)
-  - Required addition to `RouterInterface`
-  - Use case: server-rendered template emits the pattern, client-side JS performs substitution via `URL.replace('{id}', value)`
-  - Resolves the long-standing issue where `generate('route', ['id' => '_PLACEHOLDER_'])` would throw `InvalidArgumentException` because typed parameters (`{int:}`, `{uint:}`, `{float:}`) reject non-numeric placeholder strings
+ - `pattern('news-view')` -> `/news/{id}/{slug}` (instead of `/news/{int:id}/{slug}`)
+ - Throws `OutOfRangeException` if route name not found (consistent with `generate()`)
+ - Required addition to `RouterInterface`
+ - Use case: server-rendered template emits the pattern, client-side JS performs substitution via `URL.replace('{id}', value)`
+ - Resolves the long-standing issue where `generate('route', ['id' => '_PLACEHOLDER_'])` would throw `InvalidArgumentException` because typed parameters (`{int:}`, `{uint:}`, `{float:}`) reject non-numeric placeholder strings
 - **4 new unit tests** covering filter stripping, all filter types (`int`/`uint`/`float`/`utf8`/default), static routes, and unknown-route exception (total suite: 54 tests, 103 assertions, all passing)
 - **`/pattern-test` example route** in `example/index.php` demonstrating the full client-side workflow:
-  - Table showing `pattern()` output for every named route in the example
-  - Side-by-side PHP template snippet (`<?= $router->pattern('hello') ?>`) and the rendered JS output it produces
-  - Interactive **Run test** button that performs JS `.replace()` substitution on the emitted patterns and `fetch()`es the real `/hello/Temujin/Khan` and `/sum/5/7` endpoints, printing both status codes and response bodies
-  - Auto-detects the script base path so the demo works under sub-directory installs (e.g. `/Router/example/`)
+ - Table showing `pattern()` output for every named route in the example
+ - Side-by-side PHP template snippet (`<?= $router->pattern('hello') ?>`) and the rendered JS output it produces
+ - Interactive **Run test** button that performs JS `.replace()` substitution on the emitted patterns and `fetch()`es the real `/hello/Temujin/Khan` and `/sum/5/7` endpoints, printing both status codes and response bodies
+ - Auto-detects the script base path so the demo works under sub-directory installs (e.g. `/Router/example/`)
 
 ### Technical Details
 
@@ -53,13 +212,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **UTF-8 parameter type restored** - Re-introduced `{utf8:param}` parameter type (was in v4.0, removed in v5.0.0)
-  - Supports multibyte characters in URL parameters (Cyrillic, CJK, Arabic, etc.)
-  - Matches both percent-encoded (`%D0%9C%D0%BE...`) and raw UTF-8 (`Монгол`) paths
-  - Works on all PHP servers: Apache, Nginx, LiteSpeed, IIS, Caddy, PHP built-in
-  - Usage: `$router->GET('/search/{utf8:query}', ...)`
+ - Supports multibyte characters in URL parameters (Cyrillic, CJK, Arabic, etc.)
+ - Matches both percent-encoded (`%D0%9C%D0%BE...`) and raw UTF-8 (`Монгол`) paths
+ - Works on all PHP servers: Apache, Nginx, LiteSpeed, IIS, Caddy, PHP built-in
+ - Usage: `$router->GET('/search/{utf8:query}', ...)`
 - **`UTF8_REGEX` constant** - Regex pattern for UTF-8 parameters (`\x80-\xFF` byte range)
 - **Example route** - Added `/unicode/{utf8:string}` demo route
-  - Displays Unicode code point, hex value, and byte length for each character
+ - Displays Unicode code point, hex value, and byte length for each character
 
 ### Technical Details
 
@@ -75,32 +234,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **CI/CD workflow** - Automated testing using GitHub Actions
-  - Tests on PHP 8.2, 8.3, 8.4 versions
-  - Tests on Ubuntu and Windows
-  - Code coverage measurement
+ - Tests on PHP 8.2, 8.3, 8.4 versions
+ - Tests on Ubuntu and Windows
+ - Code coverage measurement
 - **API documentation** - API.md file (auto-generated from PHPDoc)
 - **Code review report** - REVIEW.md file
 - **Comprehensive PHPDoc** - Full documentation for all classes, methods, and properties
-  - `@const` annotation on all constants
-  - Method return types more specific (`@return static`)
-  - Callable types more detailed (`callable|array{class-string, string}`)
-  - Parameter type hints with array syntax (`array<string, mixed>`)
+ - `@const` annotation on all constants
+ - Method return types more specific (`@return static`)
+ - Callable types more detailed (`callable|array{class-string, string}`)
+ - Parameter type hints with array syntax (`array<string, mixed>`)
 - **Return type hints** - Added to all methods
-  - `match()` returns `Callback|null`
-  - `generate()` returns `string` (throws exception instead of returning null)
+ - `match()` returns `Callback|null`
+ - `generate()` returns `string` (throws exception instead of returning null)
 - **Type safety improvements**
-  - Property type declarations (`protected array $routes = []`)
-  - Return type declarations on all methods
-  - Better type checking in method signatures
+ - Property type declarations (`protected array $routes = []`)
+ - Return type declarations on all methods
+ - Better type checking in method signatures
 - **Enhanced merge() method** - Now also merges `name_patterns` from Router instances
 - **Example file improvements**
-  - PHPDoc added to all methods
-  - Comments made more detailed
+ - PHPDoc added to all methods
+ - Comments made more detailed
 - **README.md improvements**
-  - Installation guide made more detailed
-  - More example code added
-  - Router merge, Matching & Dispatching sections made more detailed
-  - CI/CD badges added
+ - Installation guide made more detailed
+ - More example code added
+ - Router merge, Matching & Dispatching sections made more detailed
+ - CI/CD badges added
 
 ### Improved
 
@@ -126,20 +285,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - **Callback class** - Introduced separate `Callback` class to wrap callable and parameters
-  - Replaces Route class approach from v1.0
-  - Stores callable and route parameters separately
+ - Replaces Route class approach from v1.0
+ - Stores callable and route parameters separately
 - **Simplified routing structure** - Routes stored as associative array with pattern as key
-  - Structure: `[pattern => [method => Callback]]`
-  - More efficient route lookup
+ - Structure: `[pattern => [method => Callback]]`
+ - More efficient route lookup
 - **UTF8 parameter support** - Added `utf8:` parameter type for UTF-8 encoded strings
-  - Example: `/news/{utf8:title}`
-  - Automatically URL decodes UTF-8 parameters
+ - Example: `/news/{utf8:title}`
+ - Automatically URL decodes UTF-8 parameters
 - **RouterInterface improvements** - Expanded interface with new methods
-  - Added `getRoutes()` method requirement
-  - Added `merge()` method requirement
+ - Added `getRoutes()` method requirement
+ - Added `merge()` method requirement
 - **Route naming system** - Enhanced name-based routing
-  - `name_patterns` array maps route names to patterns
-  - Better reverse routing support
+ - `name_patterns` array maps route names to patterns
+ - Better reverse routing support
 
 ### Improved
 
@@ -147,8 +306,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Route matching** - Returns `Callback` object directly instead of `Route`
 - **Parameter parsing** - Better type conversion for int, uint, and float parameters
 - **Pattern regex generation** - Improved `getPatternRegex()` method
-  - URL encodes static path parts
-  - Better regex pattern generation
+ - URL encodes static path parts
+ - Better regex pattern generation
 - **Method chaining** - `__call()` returns `&$this` for fluent interface
 - **Error handling** - Better exception messages with class context
 
@@ -177,34 +336,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Initial release** - First stable version of codesaur/router
 - **Router class** - Main routing class with full routing capabilities
 - **Route class** - Separate Route class to encapsulate route information
-  - Stores methods, pattern, callback, name, params, and filters
-  - Has getter/setter methods for all properties
+ - Stores methods, pattern, callback, name, params, and filters
+ - Has getter/setter methods for all properties
 - **RouterInterface** - Interface defining routing contract
 - **Route prefix support** - `_pipe` property for route prefixes
-  - Allows setting base path prefix for all routes
+ - Allows setting base path prefix for all routes
 - **Dynamic parameter support** - Support for typed route parameters
-  - `{int:id}` - Integer parameters (supports negative numbers)
-  - `{uint:page}` - Unsigned integer parameters (0 and positive)
-  - `{float:price}` - Float parameters
-  - `{string:slug}` - String parameters (default)
+ - `{int:id}` - Integer parameters (supports negative numbers)
+ - `{uint:page}` - Unsigned integer parameters (0 and positive)
+ - `{float:price}` - Float parameters
+ - `{string:slug}` - String parameters (default)
 - **HTTP method support** - Support for all standard HTTP methods
-  - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
-  - `ANY` method for all HTTP methods
-  - Multiple methods per route support
+ - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+ - `ANY` method for all HTTP methods
+ - Multiple methods per route support
 - **Route matching** - `match()` method finds routes by path and method
-  - Returns Route object with parameters set
-  - Automatic parameter type conversion
+ - Returns Route object with parameters set
+ - Automatic parameter type conversion
 - **Reverse routing** - `generate()` method creates URLs from route names
-  - Parameter validation and type checking
-  - Returns null if route not found (logs error in development mode)
+ - Parameter validation and type checking
+ - Returns null if route not found (logs error in development mode)
 - **Route naming** - `name()` method for naming routes
-  - Allows finding routes by name
-  - Enables reverse routing
+ - Allows finding routes by name
+ - Enables reverse routing
 - **Route merging** - `merge()` method to combine multiple routers
-  - Useful for modular applications
+ - Useful for modular applications
 - **Parameter filters** - Automatic filter assignment based on parameter type
-  - Type-specific regex patterns
-  - Parameter validation during generation
+ - Type-specific regex patterns
+ - Parameter validation during generation
 - **Strict types** - Uses `declare(strict_types=1)` for type safety
 
 ### Technical Details

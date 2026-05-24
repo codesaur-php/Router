@@ -9,7 +9,7 @@ Lightweight, fast, object-oriented routing component
 - Multiple parameter types: `{int:id}`, `{uint:page}`, `{float:price}`, `{slug}`, `{utf8:text}`
 - Route name -> URL generation (reverse routing)
 - Supports Controller and Closure callbacks
-- Router merge (combining module routes.php files)
+- Per-route middleware
 - Can be used standalone (no framework required)
 
 ---
@@ -27,22 +27,6 @@ Lightweight, fast, object-oriented routing component
 composer require codesaur/router
 ```
 
-Or add directly to `composer.json`:
-
-```json
-{
-    "require": {
-        "codesaur/router": "^5.0.0"
-    }
-}
-```
-
-Then:
-
-```bash
-composer install
-```
-
 ### Using Autoload
 
 Use Composer autoload:
@@ -51,7 +35,6 @@ Use Composer autoload:
 require 'vendor/autoload.php';
 
 use codesaur\Router\Router;
-use codesaur\Router\Callback;
 
 $router = new Router();
 // ...
@@ -62,9 +45,9 @@ $router = new Router();
 If you don't use Composer, you can download the files directly and use them:
 
 ```php
-require_once 'src/Router.php';
-require_once 'src/Callback.php';
 require_once 'src/RouterInterface.php';
+require_once 'src/Route.php';
+require_once 'src/Router.php';
 
 use codesaur\Router\Router;
 // ...
@@ -78,7 +61,6 @@ use codesaur\Router\Router;
 
 ```php
 use codesaur\Router\Router;
-use codesaur\Router\Callback;
 
 $router = new Router();
 
@@ -88,11 +70,11 @@ $router->GET('/hello/{firstname}', function ($firstname) {
 });
 
 // Match route
-$callback = $router->match('/hello/Narankhuu', 'GET');
+// match() returns: [callable, params, middleware] fixed 3-tuple OR null
+$result = $router->match('/hello/Narankhuu', 'GET');
 
-if ($callback instanceof Callback) {
-    $callable = $callback->getCallable();
-    $params = $callback->getParameters();
+if ($result !== null) {
+    [$callable, $params, $middleware] = $result;
     call_user_func_array($callable, $params);
 }
 ```
@@ -167,6 +149,129 @@ $router->generate('profile', ['id' => 'abc']);
 
 Result -> `InvalidArgumentException`
 
+### Route value object - `$router->GET(...)->name(...)`
+
+`Router::__call()` returns an **immutable `Route` value object** when registering a route. The fluent `->name(...)` API operates on the returned object directly, so it does not depend on hidden Router state.
+
+```php
+$route = $router->GET('/news/{int:id}', $handler);
+// $route is a Route instance; $route->pattern === '/news/{int:id}'
+
+$router->GET('/about', $handler)->name('about');
+// chains work because Route::name() returns the Route itself
+```
+
+**Post-hoc registration** - assign a name after registering the route:
+
+```php
+$router->GET('/foo', $handler);
+$router->registerName('foo', '/foo');
+```
+
+---
+
+### Route::middleware() - Per-route middleware
+
+Attach a **list of middleware** to be executed before the route handler:
+
+```php
+$router->POST('/api/users', [UserController::class, 'create'])
+    ->middleware([
+        AuthMiddleware::class,
+        CsrfMiddleware::class,
+        RBACPermissionMiddleware::class,
+    ]);
+```
+
+**Scope is bound to the (pattern, method) pair** - middleware only runs on the method it was attached to. This matches the behaviour of Express, Laravel, Slim, and other mainstream routers:
+
+```php
+$router->GET('/api/users', $list);                                 // public read
+$router->POST('/api/users', $create)->middleware([Auth::class]);   // protected write
+
+$router->match('/api/users', 'GET');   // [2] -> []
+$router->match('/api/users', 'POST');  // [2] -> [Auth::class]
+```
+
+**Compound methods (`GET_POST`)** fan the middleware out to each constituent method:
+
+```php
+$router->GET_POST('/foo', $handler)->middleware([Auth::class]);
+// GET /foo  -> [Auth::class]
+// POST /foo -> [Auth::class]
+```
+
+**Append semantics** - chained `->middleware()` calls accumulate:
+
+```php
+$router->GET('/admin', $handler)
+    ->middleware([AuthMiddleware::class])
+    ->middleware([AdminOnlyMiddleware::class, RateLimitMiddleware::class]);
+// Registered: [Auth, AdminOnly, RateLimit]
+```
+
+**Supported middleware types:**
+- `class-string` - PSR-15 MiddlewareInterface class (HTTP-Application instantiates at runtime)
+- `callable / Closure` - function with signature `function($request, $handler)`
+- `MiddlewareInterface instance` - pre-instantiated object
+
+**Reading middleware from match():**
+
+```php
+$result = $router->match('/api/users', 'POST');
+// $result === [
+//     [UserController::class, 'create'],      // [0] callable
+//     [],                                     // [1] params
+//     [Auth::class, Csrf::class, RBAC::class] // [2] middleware
+// ]
+
+[$callable, $params, $middleware] = $result;
+```
+
+**Integration with `codesaur/http-application`:**
+HTTP-Application automatically reads middleware from match() and appends them to the pipeline. See the http-application docs for details.
+
+---
+
+### Automatic middleware via inheritance (user-defined example pattern)
+
+> **Note:** `AuthenticatedRouter` below is **not** part of the codesaur/router package - it's an example base class you would write in your own application. You can pick any name (e.g. `AdminRouter`, `ApiRouter`); the pattern is what matters, not the name.
+
+When many routes share the same middleware, attach it automatically inside **your own base class**:
+
+```php
+// Example - a base class you write in your own application
+abstract class AuthenticatedRouter extends Router
+{
+    /** @var list<class-string> */
+    protected array $autoMiddleware = [
+        AuthMiddleware::class,
+        CsrfMiddleware::class,
+    ];
+
+    public function __call(string $method, array $properties): Route
+    {
+        return parent::__call($method, $properties)->middleware($this->autoMiddleware);
+    }
+}
+
+// Usage:
+class UsersRouter extends AuthenticatedRouter
+{
+    public function __construct()
+    {
+        $this->GET('/users', [...]);       // Auth + Csrf auto-attached
+        $this->POST('/users', [...]);
+        $this->DELETE('/users/{int:id}', [...])
+            ->middleware([AdminOnlyMiddleware::class]);  // additional
+    }
+}
+```
+
+This pattern classifies routes and shares common middleware via **inheritance** - analogous to Laravel route groups but cleaner.
+
+---
+
 ### Client-side URL Patterns
 
 For dynamic UIs where the parameter value is only known on the client (e.g. row id from a fetched list), use `pattern()` to emit a placeholder pattern that JavaScript can substitute:
@@ -214,45 +319,79 @@ fetch(URL_PATTERN.replace('{id}', selectedId));
 
 ## Matching & Dispatching
 
-Process incoming requests:
+`match()` **always returns a fixed 3-element tuple array** (or `null` when no route matches):
+
+| Position | Value | Type |
+|---|---|---|
+| `[0]` | callable | Closure or `[Class, 'method']` |
+| `[1]` | params | `array<string, mixed>` - parameters extracted from the pattern |
+| `[2]` | middleware | `list<class-string\|callable\|MiddlewareInterface>` - may be `[]` |
+
+**Concrete contract benefits:**
+- All 3 positions are always present - routes without middleware return `[2] => []`
+- Positional access (`$result[2]`) is the fastest - no hash lookup
+- Direct destructuring: `[$callable, $params, $middleware] = $result;`
+- No `?? []` checks required by consumers
+
+### Processing incoming requests
 
 ```php
-// Find route matching URL and HTTP method
-$callback = $router->match("/insert/data", "POST");
-
-if ($callback instanceof Callback) {
-    // Get callable and parameters
-    $callable = $callback->getCallable();
-    $params = $callback->getParameters();
-
-    // Execute callback
-    call_user_func_array($callable, $params);
-} else {
-    // Route not found - return 404
-    http_response_code(404);
-    echo "Page not found";
-}
-```
-
-**Complete Example:**
-```php
-// Process request
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 
-$callback = $router->match($path, $method);
+$result = $router->match($path, $method);
 
-if ($callback instanceof Callback) {
-    $callable = $callback->getCallable();
-    $params = $callback->getParameters();
+if ($result === null) {
+    http_response_code(404);
+    exit;
+}
 
-    if ($callable instanceof \Closure) {
-        call_user_func_array($callable, $params);
-    } else {
-        // Controller method
-        [$class, $method] = $callable;
-        $controller = new $class();
-        call_user_func_array([$controller, $method], $params);
+[$callable, $params, $middleware] = $result;
+
+if ($callable instanceof \Closure) {
+    call_user_func_array($callable, $params);
+} else {
+    // Controller method - [Class, 'method'] form
+    [$class, $action] = $callable;
+    $controller = new $class();
+    call_user_func_array([$controller, $action], $params);
+}
+```
+
+### Example - custom router emitting middleware
+
+```php
+use codesaur\Router\RouterInterface;
+
+class MyRouter implements RouterInterface
+{
+    public function match(string $path, string $method): ?array
+    {
+        // ... matching logic ...
+
+        return [
+            $callable,                                    // [0] callable
+            ['id' => 10],                                 // [1] params
+            [AuthMiddleware::class, RBACMiddleware::class] // [2] middleware
+        ];
+    }
+}
+```
+
+### Consuming in HTTP-Application
+
+`codesaur/http-application` forwards the **entire** match() result as the request's `match` attribute. Any custom contextual data should travel as request attributes from middleware:
+
+```php
+class SomeMiddleware implements MiddlewareInterface
+{
+    public function process($request, $handler): ResponseInterface
+    {
+        $match = $request->getAttribute('match');  // whole tuple
+        [$callable, $params, $middleware] = $match;
+
+        // ... custom logic ...
+        return $handler->handle($request);
     }
 }
 ```
@@ -266,7 +405,8 @@ The `example/index.php` file demonstrates all features:
 - GET/POST route registration  
 - Working with Controller classes  
 - Parameter type checking (int, uint, float, string)  
-- URL generation test (reverse routing)  
+- URL generation test (reverse routing)
+- Per-route middleware demo (Logging, Auth, Timing - 3 example middlewares + onion-model pipeline)
 - Performance test (10,000 iterations)
 - Automatic base-path support
 - Unicode character support
@@ -279,28 +419,57 @@ php -S localhost:8000 -t example
 
 ---
 
-## Router Merge
+## HEAD -> GET auto-fallback (RFC 7231 sec. 4.3.2)
 
-Merge module routes:
+HTTP HEAD is identical to GET except the response carries no body - only headers. Browsers use HEAD for cache validation (`ETag`/`Last-Modified`), link checkers and uptime monitors hit HEAD to verify resources without downloading them.
+
+codesaur Router **automatically dispatches HEAD requests to the GET handler** if no explicit HEAD route is registered:
 
 ```php
-// Create module router
-$moduleRouter = new Router();
-$moduleRouter->GET('/module/users', function() {
-    echo "Module users";
-})->name('module.users');
+// Only GET is registered, yet HEAD works
+$router->GET('/news/{int:id}', [NewsController::class, 'view']);
 
-// Merge with main router
-$mainRouter = new Router();
-$mainRouter->merge($moduleRouter);
-
-// Now /module/users route works
-$callback = $mainRouter->match('/module/users', 'GET');
+$result = $router->match('/news/10', 'HEAD');  // returns the GET handler
 ```
 
-**Note:**
-- Route names are also merged
-- If routes with the same name exist, the first router's route takes precedence
+### Explicit HEAD routes take precedence
+
+If you need custom HEAD behaviour, register an explicit HEAD route - it wins over the GET fallback:
+
+```php
+$router->GET('/api/items', $getHandler);
+$router->HEAD('/api/items', $headHandler);  // <- matched for HEAD
+
+$result = $router->match('/api/items', 'HEAD');  // returns $headHandler
+```
+
+### NOTE: The consumer must strip the body
+
+The Router only decides which handler to dispatch - **stripping the response body is the consumer's job** (HTTP-Application or your own dispatch code):
+
+```php
+$result = $router->match($path, $method);
+if ($result !== null) {
+    [$callable, $params] = $result;
+    \call_user_func_array($callable, $params);
+
+    // HEAD responses must NOT contain a body
+    if ($method === 'HEAD') {
+        // Either clean output buffer (ob_clean) or
+        // replace the PSR-7 Response body with an empty stream
+    }
+}
+```
+
+### No fallback from other methods
+
+HEAD only falls back to **GET**. POST/PUT/DELETE never fall back to HEAD:
+
+```php
+$router->POST('/data', $handler);
+
+$router->match('/data', 'HEAD');  // -> null (no match)
+```
 
 ---
 
@@ -330,7 +499,7 @@ Detailed documentation for this package:
 
 ## Running Tests
 
-This project includes unit tests using PHPUnit (**54 tests, 103 assertions** - `RouterTest` and `CallbackTest`).
+This project includes unit tests using PHPUnit (**71 tests, 161 assertions** - `RouterTest` and `AdapterPatternTest`).
 
 ### Install Dependencies
 
@@ -350,9 +519,8 @@ composer test:coverage     # Run tests with coverage
 #### Using PHPUnit Directly
 
 ```bash
-vendor/bin/phpunit                                    # Run all tests
+vendor/bin/phpunit                                   # Run all tests
 vendor/bin/phpunit tests/RouterTest.php              # Run specific test file
-vendor/bin/phpunit tests/CallbackTest.php            # Run callback test
 vendor/bin/phpunit --coverage-text                   # View test coverage
 vendor/bin/phpunit --filter testMatch tests/RouterTest.php  # Run specific method
 ```

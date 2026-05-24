@@ -8,13 +8,14 @@ namespace codesaur\Router;
  * codesaur Framework-ийн хөнгөн жинтэй маршрутчилал (routing) шийдлийн үндсэн Router класс.
  *
  * Энэхүү Router нь дараах үйлдлүүдийг гүйцэтгэнэ:
- *  - Маршрут бүртгэх (динамик __call ашиглан: $router->GET('/news', ...) хэлбэрээр)
- *  - {int:id}, {float:price}, {uint:page}, {slug} гэх мэт параметртэй маршрут боловсруулах
- *  - Request path болон HTTP method-д тохирох маршрутыг match() ашиглан олох
- *  - Route name -> URL generate хийх
- *  - Модулийн бусад Router-уудыг merge() ашиглан нэгтгэх
+ * - Маршрут бүртгэх (динамик __call ашиглан: $router->GET('/news', ...) хэлбэрээр)
+ * - {int:id}, {float:price}, {uint:page}, {slug} гэх мэт параметртэй маршрут боловсруулах
+ * - Request path болон HTTP method-д тохирох маршрутыг match() ашиглан олох
+ * - Route name -> URL generate хийх (reverse routing)
+ * - Per-route middleware дэмжих (Route::middleware()-ээр)
  *
- * Жижиг, тогтвортой, фрэймворкоос үл хамааран standalone байдлаар ашиглаж болно.
+ * `RouterInterface` нь хамгийн минимал contract-г л заадаг (зөвхөн `match()`).
+ * Бусад generate/pattern/name зэрэг нь Router class-ын concrete API юм.
  *
  * @package codesaur\Router
  */
@@ -23,23 +24,76 @@ class Router implements RouterInterface
     /**
      * Бүртгэлтэй бүх маршрутууд.
      *
-     * @var array<string, array<string, Callback>>
+     * Бүтэц: pattern бүрд method-map, method бүрд 2-tuple `[callable, middleware]`:
+     *   [
+     *     pattern => [
+     *       method => [
+     *         0 => callable,        // энэ (pattern, method) route-ийн handler
+     *         1 => [middleware...], // энэ (pattern, method) route-ийн middleware жагсаалт
+     *       ],
+     *       ...
+     *     ]
+     *   ]
+     *
+     * Granularity - юу юутай хэрхэн харьцаж байгаа:
+     * ----------------------------------------------------------------------
+     *   pattern + method  ->  callable     (per-METHOD granularity)
+     *   pattern + method  ->  middleware   (per-METHOD granularity)
+     * ----------------------------------------------------------------------
+     *
+     * **callable болон middleware хоёулаа (pattern, method) хосоор индекслэгдэнэ.**
+     * Express, Laravel, Slim, Fastify зэрэг mainstream router-уудтай нийцэж байна:
+     *
+     *   $router->GET('/api/users', $list);                                // public read
+     *   $router->POST('/api/users', $create)->middleware([Auth::class]);  // protected write
+     *
+     * - GET /api/users -> middleware байхгүй (public)
+     * - POST /api/users -> [Auth::class] middleware ажиллана
+     *
+     * **Compound methods (GET_POST)** - нэг дуудалт олон method-д бүртгэнэ.
+     * Эдгээрийг registration үед салгаж тус тусдаа entry болгож хадгалдаг:
+     *
+     *   $router->GET_POST('/foo', $h)->middleware([Auth::class]);
+     *   // -> $routes['/foo']['GET']  = [$h, [Auth::class]]
+     *   // -> $routes['/foo']['POST'] = [$h, [Auth::class]]
+     *
+     * **Append semantics** - олон `->middleware([...])` дуудвал шинэ middleware-үүд
+     * тухайн (pattern, method) entry-д цуглуулагдана (replace биш).
+     *
+     * @var array<string, array<string, array{
+     *     0: callable|array{class-string, string},
+     *     1: list<class-string|callable|\Psr\Http\Server\MiddlewareInterface>
+     * }>>
      */
     protected array $routes = [];
 
     /**
-     * Route name -> pattern жагсаалт.
+     * Route name -> pattern reverse index.
+     *
+     * Бүтэц:
+     *   [
+     *     ruleName => pattern,
+     *     ...
+     *   ]
+     *
+     * Granularity - name нь юутай хэрхэн харьцаж байгаа:
+     * ----------------------------------------------------------------------
+     *   ruleName  ->  pattern   (per-PATTERN granularity, HTTP method-аас үл хамаарна)
+     * ----------------------------------------------------------------------
+     *
+     * - **name нь зөвхөн pattern-руу заана** - method биш. Тиймээс нэг URL
+     *   pattern дээр GET, POST хоёулаа бүртгэгдсэн ч `->name('foo')` нь
+     *   `/foo` URL-ийн нэр - method-аас үл хамаарна. `generate('foo')` нь
+     *   зөвхөн URL string л буцаах учраас method-ийн ялгаа орохгүй.
+     *
+     * - **Нэг name -> зөвхөн нэг pattern**. Ижил name-ийг өөр pattern-д оноох
+     *   гэвэл `registerName()` нь `\LogicException` шиднэ (strict mode).
+     *
+     * - `generate($name)`-д `O(1)` lookup болохын тулд reverse-indexed array.
      *
      * @var array<string, string>
      */
     protected array $name_patterns = [];
-
-    /**
-     * Сүүлд бүртгэгдэж буй маршрутын pattern.
-     *
-     * @var string
-     */
-    private string $_pattern;
 
     /**
      * Параметертэй маршрутыг илрүүлэх regex pattern.
@@ -107,13 +161,14 @@ class Router implements RouterInterface
      *
      * @param string $method HTTP method нэр (GET, POST, PUT, DELETE, PATCH гэх мэт)
      * @param array<mixed> $properties [0] => route pattern (string),
-     *                                  [1] => callback (callable|array)
-     * @return static Method chaining-д зориулж router объектыг буцаана
+     *                                  [1] => callable
+     * @return Route Бүртгэсэн route-ыг илэрхийлэх immutable Route объект.
+     *               `->name(...)` гэх мэт fluent API-д ашиглагдана.
      *
      * @throws \InvalidArgumentException Буруу маршрут тохиргоо үед
      *                                   (pattern эсвэл callback хоосон/буруу байвал)
      */
-    public function &__call(string $method, array $properties)
+    public function __call(string $method, array $properties): Route
     {
         if (empty($properties[0]) || empty($properties[1])) {
             throw new \InvalidArgumentException(
@@ -121,166 +176,113 @@ class Router implements RouterInterface
             );
         }
 
-        $this->_pattern = $properties[0];
+        $pattern = $properties[0];
 
-        if (\is_array($properties[1]) || \is_callable($properties[1])) {
-            $callback = new Callback($properties[1]);
-        } else {
+        if (!\is_array($properties[1]) && !\is_callable($properties[1])) {
             throw new \InvalidArgumentException(
-                __CLASS__ . ": Invalid callback on route pattern [$this->_pattern]"
+                __CLASS__ . ": Invalid callback on route pattern [$pattern]"
             );
         }
 
-        $this->routes[$this->_pattern][$method] = $callback;
-
-        return $this;
-    }
-
-    /**
-     * Сүүлд бүртгэгдсэн маршрутад нэр онооно.
-     *
-     * Нэртэй маршрутуудыг generate() метод ашиглан URL үүсгэхэд ашиглана.
-     * Нэг маршрутад зөвхөн нэг нэр оноож болно. Хэрэв дахин name() дуудвал
-     * сүүлд бүртгэгдсэн маршрутын нэрийг шинэчилнэ.
-     *
-     * Жишээ:
-     *   $router->GET('/news/{int:id}', ...)->name('news-view');
-     *   $url = $router->generate('news-view', ['id' => 10]); // -> /news/10
-     *
-     * @param string $ruleName Маршрутын нэр (уникаль байх ёстой)
-     * @return void
-     */
-    public function name(string $ruleName)
-    {
-        if (isset($this->_pattern)) {
-            $this->name_patterns[$ruleName] = $this->_pattern;
-            unset($this->_pattern);
+        // Compound methods (GET_POST) - split into individual entries
+        foreach (\explode('_', $method) as $m) {
+            $this->routes[$pattern][$m] ??= [null, []];
+            $this->routes[$pattern][$m][0] = $properties[1];
         }
+
+        return new Route($this, $pattern, $method);
     }
-
+    
     /**
-     * Request path болон HTTP method-д тохирох маршрутыг хайж олно.
+     * {@inheritDoc}
      *
-     * Энэ метод нь бүртгэлтэй маршрутуудыг дарааллаар шалгаж, таарах эхний
-     * маршрутыг буцаана. Динамик параметрүүд олдвол Callback объектод
-     * автоматаар set хийгдэнэ.
-     *
-     * @param string $path Орж ирсэн URL path (/news/10 гэх мэт)
-     * @param string $method HTTP method (GET, POST, PUT, DELETE, PATCH гэх мэт)
-     * @return Callback|null Таарсан маршрут (Callback объект), эсвэл null
+     * codesaur Router-ийн хэрэгжилтийн онцлог:
+     * - **HEAD -> GET авто fallback** (RFC 7231 sec. 4.3.2):
+     *    Хэрэв `HEAD` request ирсэн боловч explicit `HEAD` route байхгүй бол
+     *    автоматаар `GET` handler рүү очно. Consumer тал response body-г
+     *    цэвэрлэх ёстой (HEAD response нь body байх ёсгүй).
+     * - Буцаах tuple үргэлж 3 элементтэй: `[callable, params, middleware]`.
+     *    Middleware байхгүй route-д ч `$result[2]` нь хоосон `[]` байна.
      */
-    public function match(string $path, string $method): Callback|null
+    public function match(string $path, string $method): ?array
     {
-        foreach ($this->routes as $pattern => $route) {
-            foreach ($route as $methods => $callback) {
+        foreach ($this->routes as $pattern => $methodMap) {
 
-                // Method check: "GET_POST" гэх мэт олон method-ууд нэг route-д байж болно
-                if (!\in_array($method, \explode('_', $methods))) {
-                    continue;
-                }
-
-                // Pattern 100% ижил бол параметргүй маршрут - шууд буцаана
-                if ($path == $pattern) {
-                    return $callback;
-                }
-
-                $filters = [];
-                $paramMatches = [];
-
-                // Параметрүүдтэй эсэхийг шалгана - хэрэв параметр байхгүй бол дараагийн route руу шилжинэ
-                if (!\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
-                    continue;
-                }
-
-                // Filterүүдийг тодорхойлох - параметрийн төрөл бүрт тохирох regex pattern оноох
-                foreach ($paramMatches[2] as $index => $param) {
-                    switch ($paramMatches[1][$index]) {
-                        case 'int:':   $filters[$param] = self::INT_REGEX; break;
-                        case 'uint:':  $filters[$param] = self::UNSIGNED_INT_REGEX; break;
-                        case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
-                        case 'utf8:':  $filters[$param] = self::UTF8_REGEX; break;
-                        default:       $filters[$param] = self::DEFAULT_REGEX;
-                    }
-                }
-
-                // Regex таарах эсэх - pattern-ийг regex болгож, path-тай тааруулах
-                $matches = [];
-                $regex = $this->getPatternRegex($pattern, $filters);
-
-                if (!\preg_match("@^$regex/?$@i", $path, $matches)
-                    || \count($paramMatches[2]) != (\count($matches) - 1)) {
-                    continue;
-                }
-
-                // Параметрүүдийг parse хийе - төрөл бүрт тохирох утга болгон хөрвүүлэх
-                $params = [];
-                foreach ($paramMatches[2] as $key => $name) {
-                    if (isset($matches[$key + 1])) {
-                        $filter = $filters[$name];
-                        if ($filter == self::DEFAULT_REGEX
-                            || $filter == self::UTF8_REGEX
-                        ) {
-                            // String параметр - URL decode хийх
-                            $params[$name] = \rawurldecode($matches[$key + 1]);
-                        } elseif ($filter == self::FLOAT_REGEX) {
-                            // Float параметр - float болгон хөрвүүлэх
-                            $params[$name] = (float) $matches[$key + 1];
-                        } else {
-                            // Integer параметр (int эсвэл uint) - int болгон хөрвүүлэх
-                            $params[$name] = (int) $matches[$key + 1];
-                        }
-                    }
-                }
-
-                // Параметрүүдийг Callback объектод set хийж, буцаана
-                $callback->setParameters($params);
-
-                return $callback;
+            // Энэ pattern-д шаардсан method бүртгэлгүй бол шууд алгасна
+            if (!isset($methodMap[$method])) {
+                continue;
             }
+
+            [$callable, $middleware] = $methodMap[$method];
+
+            // Pattern 100% ижил бол параметргүй маршрут - шууд буцаана
+            if ($path == $pattern) {
+                return [$callable, [], $middleware];
+            }
+
+            $filters = [];
+            $paramMatches = [];
+
+            // Параметрүүдтэй эсэхийг шалгана - хэрэв параметр байхгүй бол дараагийн route руу шилжинэ
+            if (!\preg_match_all(self::FILTERS_REGEX, $pattern, $paramMatches)) {
+                continue;
+            }
+
+            // Filterүүдийг тодорхойлох - параметрийн төрөл бүрт тохирох regex pattern оноох
+            foreach ($paramMatches[2] as $index => $param) {
+                switch ($paramMatches[1][$index]) {
+                    case 'int:':   $filters[$param] = self::INT_REGEX; break;
+                    case 'uint:':  $filters[$param] = self::UNSIGNED_INT_REGEX; break;
+                    case 'float:': $filters[$param] = self::FLOAT_REGEX; break;
+                    case 'utf8:':  $filters[$param] = self::UTF8_REGEX; break;
+                    default:       $filters[$param] = self::DEFAULT_REGEX;
+                }
+            }
+
+            // Regex таарах эсэх - pattern-ийг regex болгож, path-тай тааруулах
+            $matches = [];
+            $regex = $this->getPatternRegex($pattern, $filters);
+
+            if (!\preg_match("@^$regex/?$@i", $path, $matches)
+                || \count($paramMatches[2]) != (\count($matches) - 1)) {
+                continue;
+            }
+
+            // Параметрүүдийг parse хийе - төрөл бүрт тохирох утга болгон хөрвүүлэх
+            $params = [];
+            foreach ($paramMatches[2] as $key => $name) {
+                if (isset($matches[$key + 1])) {
+                    $filter = $filters[$name];
+                    if ($filter == self::DEFAULT_REGEX
+                        || $filter == self::UTF8_REGEX
+                    ) {
+                        // String параметр - URL decode хийх
+                        $params[$name] = \rawurldecode($matches[$key + 1]);
+                    } elseif ($filter == self::FLOAT_REGEX) {
+                        // Float параметр - float болгон хөрвүүлэх
+                        $params[$name] = (float) $matches[$key + 1];
+                    } else {
+                        // Integer параметр (int эсвэл uint) - int болгон хөрвүүлэх
+                        $params[$name] = (int) $matches[$key + 1];
+                    }
+                }
+            }
+
+            return [$callable, $params, $middleware];
+        }
+
+        // HEAD -> GET авто fallback (RFC 7231 sec. 4.3.2).
+        // Explicit HEAD route байгаа бол дээрх loop-д аль хэдийнэ таарсан байх ёстой.
+        // Энд хүрсэн бол HEAD-д тохирох route байхгүй гэсэн үг - GET-ээр дахин оролдоё.
+        if ($method === 'HEAD') {
+            return $this->match($path, 'GET');
         }
 
         return null;
     }
 
     /**
-     * Өөр router-ийн маршрутыг энэ router-т нэгтгэнэ.
-     *
-     * Энэ метод нь модулиудын routes.php файлуудыг үндсэн router-тэй
-     * нэгтгэхэд ашиглагдана. Route name-ууд мөн нэгтгэгдэнэ. Хэрэв ижил
-     * нэртэй route байвал эхний router-ийнх нь давуу тал болно.
-     *
-     * @param RouterInterface $router Нэмэлт router (маршрутуудыг нэгтгэх)
-     * @return void
-     */
-    public function merge(RouterInterface $router)
-    {
-        // Маршрутуудыг нэгтгэнэ
-        $this->routes = \array_merge($this->routes, $router->getRoutes());
-
-        // Хэрэв нэгтгэж буй router нь Router классын instance бол
-        // name_patterns-ийг мөн нэгтгэнэ (ижил нэртэй route байвал эхнийх нь давуу тал болно)
-        if ($router instanceof Router && !empty($router->name_patterns)) {
-            $this->name_patterns += $router->name_patterns;
-        }
-    }
-
-    /**
-     * Route name -> URL generate хийнэ (reverse routing).
-     *
-     * Нэртэй маршрутын pattern-д параметрүүдийг суулгаж, бодит URL үүсгэнэ.
-     * Параметрийн төрөл (int, uint, float) шалгагдаж, буруу бол exception шиднэ.
-     *
-     * Жишээ:
-     *   $router->GET('/news/{int:id}', ...)->name('news-view');
-     *   $url = $router->generate('news-view', ['id' => 10]); // -> /news/10
-     *
-     * @param string $ruleName Route name (name() методоор бүртгэсэн)
-     * @param array<string,mixed> $params Параметрүүд (жишээ: ['id' => 10, 'slug' => 'test'])
-     * @return string Үүсгэсэн URL path
-     *
-     * @throws \OutOfRangeException Нэртэй маршрут олдохгүй бол
-     * @throws \InvalidArgumentException Параметрийн төрөл буруу бол
-     *                                   (жишээ: int шаардлагатай боловч string дамжуулсан)
+     * {@inheritDoc}
      */
     public function generate(string $ruleName, array $params = []): string
     {
@@ -351,24 +353,7 @@ class Router implements RouterInterface
     }
 
     /**
-     * Route name -> client-side substitution-д бэлэн URL pattern буцаана.
-     *
-     * generate()-аас ялгаатай нь параметрийн утга шаардахгүй, зөвхөн filter
-     * prefix-уудыг хасч JS-н replace()-д тохирох placeholder pattern буцаана.
-     *
-     * Жишээ:
-     *   $router->GET('/news/{int:id}/{slug}', ...)->name('news-view');
-     *   $router->pattern('news-view');
-     *   // -> '/news/{id}/{slug}'
-     *
-     * Template + JS хэрэглээ:
-     *   const URL = '{{ "news-view"|pattern }}';
-     *   fetch(URL.replace('{id}', 10).replace('{slug}', 'hello'));
-     *
-     * @param string $ruleName Route name (name() методоор бүртгэсэн)
-     * @return string Filter prefix хасагдсан pattern
-     *
-     * @throws \OutOfRangeException Route name олдохгүй бол
+     * {@inheritDoc}
      */
     public function pattern(string $ruleName): string
     {
@@ -386,13 +371,87 @@ class Router implements RouterInterface
     }
 
     /**
-     * Бүртгэлтэй маршрутуудын жагсаалтыг буцаана.
+     * {@inheritDoc}
      *
-     * @return array<string, array<string, Callback>>
+     * Storage shape-ийг шууд буцаана. Name мэдээлэл хэрэгтэй бол
+     * `generate($name)`-ээр шалгах, эсвэл subclass-аас `$name_patterns`-руу хандах.
      */
     public function getRoutes(): array
     {
         return $this->routes;
+    }
+
+    /**
+     * Route name -> pattern бүртгэх (internal API).
+     *
+     * Энэ метод нь Route::name()-аас дуудагдах internal механизм. Хэрэглэгчийн
+     * нийтлэг хэрэглээ нь Route::name() chain-р явах:
+     *   $router->GET('/news/{int:id}', ...)->name('news-view');
+     *
+     * Шууд дуудах тохиолдол ховор - pattern нь Route::name()-аар автоматаар
+     * дамжуулагдсан. Гэхдээ post-hoc нэр оноох шаардлагатай үед дуудаж болно:
+     *   $router->GET('/foo', $cb);
+     *   $router->registerName('foo', '/foo');
+     *
+     * Strict mode - ижил нэрийг өөр pattern-д оноовол `\LogicException` шиднэ.
+     * Ижил нэрийг ижил pattern-д давтан оноох нь idempotent:
+     *   $router->GET('/users', $cb)->name('users')->name('users');  // no-op
+     *
+     * @param string $ruleName Маршрутын нэр (уникаль байх ёстой)
+     * @param string $pattern Маршрутын pattern
+     * @return void
+     *
+     * @throws \LogicException Ижил нэр өөр pattern-д бүртгэгдэх гэж байгаа бол
+     * @internal Route::name() дотроос дуудагдана. Шууд дуудах нь сонголтот.
+     */
+    public function registerName(string $ruleName, string $pattern): void
+    {
+        if (isset($this->name_patterns[$ruleName])
+            && $this->name_patterns[$ruleName] !== $pattern
+        ) {
+            throw new \LogicException(\sprintf(
+                '%s: Route name [%s] is already registered to pattern [%s]; cannot reassign to [%s]',
+                __CLASS__,
+                $ruleName,
+                $this->name_patterns[$ruleName],
+                $pattern
+            ));
+        }
+
+        $this->name_patterns[$ruleName] = $pattern;
+    }
+
+    /**
+     * (pattern, method) route-д middleware жагсаалт хавсаргах (internal API).
+     *
+     * Энэ метод нь Route::middleware()-аас дуудагдах internal механизм. Хэвлэг
+     * хэрэглээ нь `$router->GET(...)->middleware([...])` chain юм.
+     *
+     * Method нь compound байж болно (GET_POST) - тэгвэл доорх method бүрд
+     * middleware-ийг тус тусад нь нэмнэ.
+     *
+     * Append semantics - хэд хэдэн удаа дуудвал middleware-ууд цуглуулагдана:
+     *   $router->GET('/x', $cb)->middleware([A::class])->middleware([B::class]);
+     *   // Эцэст: $routes['/x']['GET'][1] = [A::class, B::class]
+     *
+     * Энэ нь base class-ийн __call() дотроос middleware auto-attach хийгээд,
+     * хэрэглэгч нэмэлт middleware route-д наахад тохиромжтой.
+     *
+     * @param string $pattern Маршрутын pattern
+     * @param string $method  HTTP method (compound 'GET_POST' дэмжинэ)
+     * @param list<class-string|callable|\Psr\Http\Server\MiddlewareInterface> $middleware
+     * @return void
+     * @internal Route::middleware() дотроос дуудагдана.
+     */
+    public function registerMiddleware(string $pattern, string $method, array $middleware): void
+    {
+        foreach (\explode('_', $method) as $m) {
+            $this->routes[$pattern][$m] ??= [null, []];
+            $this->routes[$pattern][$m][1] = [
+                ...$this->routes[$pattern][$m][1],
+                ...$middleware,
+            ];
+        }
     }
 
     /**
