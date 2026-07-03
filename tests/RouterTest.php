@@ -992,6 +992,48 @@ class RouterTest extends TestCase
     }
 
     /**
+     * generate() - зөвхөн зарим параметр өгөгдсөн үед яг нэрлэсэн placeholder
+     * нь солигдох ёстой (ижил filter-тэй өөр placeholder-т халдахгүй)
+     */
+    public function testGeneratePartialParamsReplacesCorrectPlaceholder(): void
+    {
+        $this->router->GET('/point/{int:x}/{int:y}', function () {
+        })->name('point');
+
+        $url = $this->router->generate('point', ['y' => 5]);
+        $this->assertEquals('/point/{int:x}/5', $url);
+    }
+
+    /**
+     * generate() - параметрийн утга доторх $1, \1 зэрэг тэмдэгтүүд regex
+     * backreference болж тайлагдах ёсгүй
+     */
+    public function testGenerateValueWithDollarSignIsLiteral(): void
+    {
+        $this->router->GET('/search/{query}', function () {
+        })->name('search');
+
+        $url = $this->router->generate('search', ['query' => 'a$1b']);
+        $this->assertEquals('/search/a$1b', $url);
+    }
+
+    /**
+     * Литерал сегмент доторх цэг (.) regex wildcard байх ёсгүй
+     */
+    public function testStaticSegmentDotIsLiteralInMatch(): void
+    {
+        $this->router->GET('/files/{int:id}/manifest.json', function () {
+        });
+
+        $result = $this->router->match('/files/1/manifest.json', 'GET');
+        $this->assertIsArray($result);
+        $this->assertEquals(['id' => 1], $result[1]);
+
+        $result = $this->router->match('/files/1/manifestXjson', 'GET');
+        $this->assertNull($result, 'Цэг нь wildcard биш, литерал байх ёстой');
+    }
+
+    /**
      * match() буцаах нь үргэлж 3 элементтэй tuple - destructuring шууд ажиллах
      */
     public function testMatchAlwaysReturnsThreeElementTuple(): void

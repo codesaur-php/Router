@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [6.0.1] - 2026-07-03
+[6.0.1]: https://github.com/codesaur-php/Router/compare/v6.0.0...v6.0.1
+
+### Fixed
+
+- **`generate()` replaced the wrong placeholder on partial params.** When only
+  some parameters were supplied, `preg_replace` with limit 1 substituted the
+  *first* placeholder of the matching filter type instead of the one with the
+  requested name (e.g. `/point/{int:x}/{int:y}` with `['y' => 5]` produced
+  `/point/5/{int:y}`). Substitution now targets the exact named placeholder
+  via `str_replace`.
+- **`generate()` interpreted `$1`/`\1` in parameter values as regex
+  backreferences.** Values were passed as a `preg_replace` replacement string;
+  they are now substituted literally.
+- **Literal dot in static segments acted as a regex wildcard in `match()`.**
+  A pattern like `/files/{int:id}/manifest.json` also matched
+  `/files/1/manifestXjson` because `rawurlencode` leaves `.` and `~`
+  untouched. Literal segments are now additionally passed through
+  `preg_quote`.
+
+### Removed
+
+- Author phone number removed from `composer.json`.
+
 ## [6.0.0] - 2026-05-24
 [6.0.0]: https://github.com/codesaur-php/Router/compare/v5.2.0...v6.0.0
 

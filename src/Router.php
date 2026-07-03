@@ -338,12 +338,15 @@ class Router implements RouterInterface
                             break;
                     }
 
-                    // Pattern-д параметр суулгах - {int:id} -> бодит утга
-                    $pattern = \preg_replace(
-                        '/\{' . $filter . '(\w+)\}/',
-                        $params[$key],
-                        $pattern,
-                        1
+                    // Pattern-д параметр суулгах - {int:id} -> бодит утга.
+                    // Нэрээр нь ЯГ таарах placeholder-ийг л солино. preg_replace
+                    // ашиглавал (1) ижил filter-тэй ӨӨР нэртэй эхний placeholder
+                    // солигдох, (2) утга доторх $1, \1 зэрэг backreference болж
+                    // тайлагдах хоёр алдаа гарна.
+                    $pattern = \str_replace(
+                        '{' . $filter . $key . '}',
+                        (string) $params[$key],
+                        $pattern
                     );
                 }
             }
@@ -470,10 +473,13 @@ class Router implements RouterInterface
     {
         $parts = \explode('/', $pattern);
 
-        // Текст хэсгийг URL encode болгоно - URL-д аюулгүй байхын тулд
+        // Текст хэсгийг URL encode болгоно - URL-д аюулгүй байхын тулд.
+        // Дараа нь preg_quote хийнэ: rawurlencode нь `.` болон `~`-ийг
+        // хувиргадаггүй тул escape хийхгүй бол `.` нь regex wildcard болж
+        // `/files/app.js` pattern `/files/appXjs`-тэй таарах алдаа гарна.
         foreach ($parts as &$part) {
             if ($part != '' && $part[0] != '{') {
-                $part = \rawurlencode($part);
+                $part = \preg_quote(\rawurlencode($part), '@');
             }
         }
 
